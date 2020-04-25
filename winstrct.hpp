@@ -293,11 +293,24 @@ public:
     */
     T* ReAlloc(DWORD dwAllocSize)
     {
-        T *newblock = (T*)LocalReAlloc(ptr, dwAllocSize, LMEM_ZEROINIT);
-        if (newblock != NULL)
-            return ptr = newblock;
+        T* newblock;
+        if (ptr == NULL)
+        {
+            newblock = (T*)LocalAlloc(LMEM_ZEROINIT, dwAllocSize);
+        }
         else
+        {
+            newblock = (T*)LocalReAlloc(ptr, dwAllocSize, LMEM_ZEROINIT);
+        }
+
+        if (newblock != NULL)
+        {
+            return ptr = newblock;
+        }
+        else
+        {
             return NULL;
+        }
     }
 
     T* Free()
@@ -422,16 +435,20 @@ public:
     {
         if (ptr == NULL)
         {
-            return ptr =
-                (T*)HeapAlloc(GetProcessHeap(), dwFlags, AllocSize);
+            ptr = (T*)HeapAlloc(GetProcessHeap(), dwFlags, AllocSize);
+            return ptr;
         }
 
-        T *newblock = (T *)HeapReAlloc(GetProcessHeap(), dwFlags, ptr, AllocSize);
+        T* newblock = (T*)HeapReAlloc(GetProcessHeap(), dwFlags, ptr, AllocSize);
 
         if (newblock != NULL)
+        {
             return ptr = newblock;
+        }
         else
+        {
             return NULL;
+        }
     }
 
     T *Free(DWORD dwFlags = 0)
@@ -464,6 +481,53 @@ public:
     ~WHeapMem()
     {
         Free();
+    }
+};
+
+/* WMemList<T>
+
+List of memory blocks that are freed by destructor by calling LocalFree.
+*/
+template <typename T>
+class WMemList : public WHeapMem < WMem < T > >
+{
+    size_t count;
+
+public:
+    size_t ItemCount() const
+    {
+        return count;
+    }
+
+    WMemList()
+    {
+        count = 0;
+    }
+
+    ~WMemList()
+    {
+        for (size_t i = 0; i < count; i++)
+        {
+            ptr[i].Free();
+        }
+
+        count = 0;
+    }
+
+    size_t Add(T* item)
+    {
+        size_t i = count;
+
+        if (i >= Count())
+        {
+            ReAlloc((i + 1) * sizeof(T*), HEAP_GENERATE_EXCEPTIONS | HEAP_ZERO_MEMORY);
+        }
+
+        ptr[i] = item;
+
+        count = i + 1;
+
+        return i;
     }
 };
 

@@ -192,7 +192,7 @@ RunDLLFunc(HWND hwnd, HINSTANCE hinst, LPSTR lpszCmdLine, int nCmdShow);
 #define FREE_FIELD(field, freefunc) \
         REPLACE_FIELD(field, freefunc, NULL)
 
-#if defined(_WIN64) || defined(_M_ARM) || defined(__cplusplus_cli)
+#if defined(__cplusplus_cli) || !defined(_M_IX86)
 #define htonll(n) _byteswap_ulong(n)
 #else
 __inline long long __declspec(naked)
@@ -209,6 +209,41 @@ htonll()
     }
 }
 #endif
+
+#if (_MSC_VER >= 1400) && (defined(_M_IX86) || defined(_M_AMD64))
+EXTERN_C void __cpuid(int a[4], int b);
+
+#pragma intrinsic(__cpuid, memcmp, memcpy, memset, strcat, strcmp, strcpy, strlen)
+
+#define MICROSOFT_HV_CPUID "Microsoft Hv"
+
+__forceinline BOOL
+IsHyperV()
+{
+    struct
+    {
+        int highest_leaf;
+        char vendor[12];
+    } cpuinfo;
+    __cpuid((int*)&cpuinfo, 0x40000000);
+    return memcmp(cpuinfo.vendor, MICROSOFT_HV_CPUID, sizeof(cpuinfo.vendor)) == 0;
+}
+#else
+#pragma intrinsic(memcmp, memcpy, memset, strcat, strcmp, strcpy, strlen)
+#endif
+
+__forceinline size_t
+StringLength(LPCWSTR string, size_t maxlen)
+{
+    size_t i = 0;
+
+    while (i < maxlen && string[i] != 0)
+    {
+        ++i;
+    }
+
+    return i;
+}
 
 // Complement to the lstr*** API functions
 __forceinline int
@@ -689,7 +724,7 @@ __forceinline
 BOOL
 EnableBackupPrivileges()
 {
-    LPTSTR privileges[] = {
+    LPCTSTR privileges[] = {
         SE_BACKUP_NAME,
         SE_RESTORE_NAME,
         SE_SECURITY_NAME,

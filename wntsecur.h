@@ -240,9 +240,61 @@ struct WSecurityDescriptorControl
 
 #ifdef __SDDL_H__
 
+class WSid : public WMem<VOID>
+{
+public:
+    WSid()
+    {
+    }
+
+    explicit WSid(LPCWSTR sid)
+    {
+        if (!ConvertStringSidToSidW(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+    }
+
+    explicit WSid(LPCSTR sid)
+    {
+        if (!ConvertStringSidToSidA(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+    }
+
+    PSID operator =(LPCWSTR sid)
+    {
+        Free();
+
+        if (!ConvertStringSidToSidW(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+
+        return ptr;
+    }
+
+    PSID operator =(LPCSTR sid)
+    {
+        Free();
+
+        if (!ConvertStringSidToSidA(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+
+        return ptr;
+    }
+};
+
 class WSidStr : public WMem<TCHAR>
 {
 public:
+    WSidStr()
+    {
+    }
+
     explicit WSidStr(PSID sid)
     {
         if (!ConvertSidToStringSid(sid, &ptr))
@@ -250,11 +302,27 @@ public:
             ptr = NULL;
         }
     }
+
+    PTCHAR operator =(PSID sid)
+    {
+        Free();
+
+        if (!ConvertSidToStringSid(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+
+        return ptr;
+    }
 };
 
 class WSidStrW : public WMem<WCHAR>
 {
 public:
+    WSidStrW()
+    {
+    }
+
     explicit WSidStrW(PSID sid)
     {
         if (!ConvertSidToStringSidW(sid, &ptr))
@@ -262,17 +330,45 @@ public:
             ptr = NULL;
         }
     }
+
+    PWCHAR operator =(PSID sid)
+    {
+        Free();
+
+        if (!ConvertSidToStringSidW(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+
+        return ptr;
+    }
 };
 
 class WSidStrA : public WMem<CHAR>
 {
 public:
+    WSidStrA()
+    {
+    }
+
     explicit WSidStrA(PSID sid)
     {
         if (!ConvertSidToStringSidA(sid, &ptr))
         {
             ptr = NULL;
         }
+    }
+
+    PCHAR operator =(PSID sid)
+    {
+        Free();
+
+        if (!ConvertSidToStringSidA(sid, &ptr))
+        {
+            ptr = NULL;
+        }
+
+        return ptr;
     }
 };
 

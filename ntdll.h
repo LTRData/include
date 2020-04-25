@@ -4280,24 +4280,42 @@ extern "C"
             OUT GUID* Guid
         );
 
-		NTSYSCALLAPI
-		NTSTATUS
-		NTAPI
-		NtCreateToken(
-			OUT PHANDLE TokenHandle,
-			IN ACCESS_MASK DesiredAccess,
-			IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
-			IN TOKEN_TYPE TokenType,
-			IN PLUID AuthenticationId,
-			IN PLARGE_INTEGER ExpirationTime,
-			IN PTOKEN_USER User,
-			IN PTOKEN_GROUPS Groups,
-			IN PTOKEN_PRIVILEGES Privileges,
-			IN PTOKEN_OWNER Owner OPTIONAL,
-			IN PTOKEN_PRIMARY_GROUP PrimaryGroup,
-			IN PTOKEN_DEFAULT_DACL DefaultDacl OPTIONAL,
-			IN PTOKEN_SOURCE TokenSource
+        NTSYSCALLAPI
+            NTSTATUS
+            NTAPI
+            NtCreateToken(
+                OUT PHANDLE TokenHandle,
+                IN ACCESS_MASK DesiredAccess,
+                IN POBJECT_ATTRIBUTES ObjectAttributes OPTIONAL,
+                IN TOKEN_TYPE TokenType,
+                IN PLUID AuthenticationId,
+                IN PLARGE_INTEGER ExpirationTime,
+                IN PTOKEN_USER User,
+                IN PTOKEN_GROUPS Groups,
+                IN PTOKEN_PRIVILEGES Privileges,
+                IN PTOKEN_OWNER Owner OPTIONAL,
+                IN PTOKEN_PRIMARY_GROUP PrimaryGroup,
+                IN PTOKEN_DEFAULT_DACL DefaultDacl OPTIONAL,
+                IN PTOKEN_SOURCE TokenSource
+            );
+
+        NTSYSCALLAPI
+            PVOID
+            NTAPI
+            RtlLookupElementGenericTableAvl(
+                IN PVOID Table,
+                IN PVOID Buffer
         );
+        
+        NTSYSCALLAPI
+            PVOID
+            NTAPI
+            RtlInsertElementGenericTableAvl(
+                IN PVOID Table,
+                IN PVOID Buffer,
+                IN ULONG BufferSize,
+                IN PBOOLEAN NewElement OPTIONAL
+            );
 
         typedef struct _TOKEN_SECURITY_ATTRIBUTE_FQBN_VALUE
         {
