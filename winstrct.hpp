@@ -635,6 +635,25 @@ public:
 #else
 #define WNTErrMsg WNTErrMsgA
 #endif
+
+__forceinline
+DWORD
+ExceptionCodeToWinError(NTSTATUS Status)
+{
+    if ((Status & 0xFFFF0000UL) == 0xC06D0000)
+    {
+        return (DWORD)(Status & 0x0000FFFFUL);
+    }
+    else if ((Status & 0x0FFF0000UL) != 0)
+    {
+        return (DWORD)Status;
+    }
+    else
+    {
+        return RtlNtStatusToDosError(Status);
+    }
+}
+
 #endif
 
 #ifdef UNICODE

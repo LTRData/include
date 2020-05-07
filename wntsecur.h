@@ -372,6 +372,65 @@ public:
     }
 };
 
+#ifdef NT_SUCCESS
+class WSidUnicodeString : public UNICODE_STRING
+{
+public:
+    WSidUnicodeString()
+    {
+        MaximumLength = Length = 0;
+        Buffer = NULL;
+    }
+
+    explicit WSidUnicodeString(PSID sid)
+    {
+        if (!NT_SUCCESS(RtlConvertSidToUnicodeString(this, sid, TRUE)))
+        {
+            MaximumLength = Length = 0;
+            Buffer = NULL;
+        }
+    }
+
+    WSidUnicodeString * operator =(PSID sid)
+    {
+        Free();
+
+        if (!NT_SUCCESS(RtlConvertSidToUnicodeString(this, sid, TRUE)))
+        {
+            MaximumLength = Length = 0;
+            Buffer = NULL;
+        }
+
+        return this;
+    }
+
+    void Free()
+    {
+        if (Buffer != NULL)
+        {
+            RtlFreeUnicodeString(this);
+            MaximumLength = Length = 0;
+            Buffer = NULL;
+        }
+    }
+
+    ~WSidUnicodeString()
+    {
+        Free();
+    }
+
+    operator bool()
+    {
+        return Buffer != NULL;
+    }
+
+    bool operator !()
+    {
+        return Buffer == NULL;
+    }
+};
+#endif
+
 #endif
 
 #endif // __cplusplus

@@ -4053,13 +4053,6 @@ extern "C"
             IN OUT PSIZE_T RegionSize, IN ULONG FreeType);
 
     NTSYSAPI
-        NTSTATUS
-        NTAPI
-        RtlConvertSidToUnicodeString(IN OUT PUNICODE_STRING DestinationString,
-            IN PSID pSID,
-            IN BOOLEAN AllocateDestinationString);
-
-    NTSYSAPI
         ULONG
         __cdecl
         DbgPrint(
@@ -4415,6 +4408,29 @@ extern "C"
                 __in PSID Sid1,
                 __in PSID Sid2
             );
+
+        NTSYSAPI
+            NTSTATUS
+            NTAPI
+            RtlInitializeSid(
+                PSID                      Sid,
+                PSID_IDENTIFIER_AUTHORITY IdentifierAuthority,
+                UCHAR                     SubAuthorityCount);
+
+        NTSYSAPI
+            PULONG
+            NTAPI
+            RtlSubAuthoritySid(
+                PSID  Sid,
+                ULONG SubAuthority);
+
+        NTSYSAPI
+            NTSTATUS
+            NTAPI
+            RtlConvertSidToUnicodeString(
+                IN OUT PUNICODE_STRING DestinationString,
+                IN PSID pSID,
+                IN BOOLEAN AllocateDestinationString);
 
         NTSTATUS
             NTAPI
