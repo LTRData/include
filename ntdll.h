@@ -232,8 +232,10 @@ extern "C"
 #define SYMBOLIC_LINK_QUERY 0x0001
 #define SYMBOLIC_LINK_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED | 0x1)
 
+#ifndef NT_SUCCESS
 #define NT_SUCCESS(Status) ((LONG)(Status) >= 0)
 #define NT_ERROR(Status) ((ULONG)(Status) >> 30 == 3)
+#endif
 
 #ifndef DEVICE_TYPE
 #define DEVICE_TYPE DWORD
@@ -383,12 +385,12 @@ extern "C"
 
     typedef struct _OBJECT_ATTRIBUTES
     {
-        ULONG uLength;
-        HANDLE hRootDirectory;
-        PUNICODE_STRING pObjectName;
-        ULONG uAttributes;
-        PVOID pSecurityDescriptor;
-        PVOID pSecurityQualityOfService;
+        ULONG Length;
+        HANDLE RootDirectory;
+        PUNICODE_STRING ObjectName;
+        ULONG Attributes;
+        PVOID SecurityDescriptor;
+        PVOID SecurityQualityOfService;
     } OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
 
     typedef struct _CLIENT_ID
@@ -2566,22 +2568,102 @@ extern "C"
             OUT PUNICODE_STRING NameString,
             OUT PULONG ResultLength OPTIONAL);
 
-    NTSYSAPI
+    typedef
         NTSTATUS
         NTAPI
-        NtCreateKey(OUT PHANDLE KeyHandle,
+        fNtCreateKey(
+            OUT PHANDLE KeyHandle,
             IN ACCESS_MASK DesiredAccess,
             IN POBJECT_ATTRIBUTES ObjectAttributes,
             IN ULONG TitleIndex,
             IN PUNICODE_STRING Class OPTIONAL,
-            IN ULONG CreateOptions, OUT PULONG Disposition OPTIONAL);
+            IN ULONG CreateOptions,
+            OUT PULONG Disposition OPTIONAL);
+
+    NTSYSAPI fNtCreateKey NtCreateKey;
+    NTSYSAPI fNtCreateKey ZwCreateKey;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fRtlpNtCreateKey(
+            OUT PHANDLE KeyHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes,
+            IN ULONG Options,
+            IN PUNICODE_STRING Provider,
+            OUT OPTIONAL PULONG Disposition);
+
+    NTSYSAPI fRtlpNtCreateKey RtlpNtCreateKey;
+    NTSYSAPI fRtlpNtCreateKey RtlpZwCreateKey;
 
     NTSYSAPI
         NTSTATUS
         NTAPI
-        NtOpenKey(OUT PHANDLE KeyHandle,
+        NtCreateKeyTransacted(
+            OUT PHANDLE KeyHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes,
+            IN ULONG TitleIndex,
+            IN PUNICODE_STRING Class OPTIONAL,
+            IN ULONG CreateOptions,
+            IN HANDLE TransactionHandle,
+            OUT PULONG Disposition OPTIONAL
+        );
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fNtOpenKey(
+            OUT PHANDLE KeyHandle,
             IN ACCESS_MASK DesiredAccess,
             IN POBJECT_ATTRIBUTES ObjectAttributes);
+
+    NTSYSAPI fNtOpenKey NtOpenKey;
+    NTSYSAPI fNtOpenKey ZwOpenKey;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fRtlpNtOpenKey(
+            OUT PHANDLE KeyHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes,
+            IN ULONG Options);
+
+    NTSYSAPI fRtlpNtOpenKey RtlpNtOpenKey;
+    NTSYSAPI fRtlpNtOpenKey RtlpZwOpenKey;
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtOpenKeyEx(
+            OUT PHANDLE KeyHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes,
+            IN ULONG OpenOptions
+        );
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtOpenKeyTransacted(
+            OUT PHANDLE KeyHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes,
+            IN HANDLE TransactionHandle
+        );
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtOpenKeyTransactedEx(
+            OUT PHANDLE KeyHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes,
+            IN ULONG OpenOptions,
+            IN HANDLE TransactionHandle
+        );
 
     NTSYSAPI
         NTSTATUS NTAPI NtSaveKey(IN HANDLE KeyHandle, IN HANDLE FileHandle);
@@ -3813,9 +3895,9 @@ extern "C"
     NTSYSAPI
         NTSTATUS
         NTAPI
-        RtlDuplicateUnicodeString(IN INT add_nul,
-            IN const PUNICODE_STRING source,
-            IN OUT PUNICODE_STRING destination);
+        RtlDuplicateUnicodeString(IN ULONG Flags,
+            IN const PUNICODE_STRING SourceString,
+            IN OUT PUNICODE_STRING DestinationString);
 
     NTSYSAPI
         NTSTATUS
@@ -4053,6 +4135,13 @@ extern "C"
             IN OUT PSIZE_T RegionSize, IN ULONG FreeType);
 
     NTSYSAPI
+        VOID
+        NTAPI
+        DbgBreakPoint(
+            VOID
+        );
+
+    NTSYSAPI
         ULONG
         __cdecl
         DbgPrint(
@@ -4077,6 +4166,97 @@ extern "C"
             IN PLARGE_INTEGER       MiniumSize,
             IN PLARGE_INTEGER       MaxiumSize,
             OUT PLARGE_INTEGER      ActualSize OPTIONAL);
+
+    typedef struct _CRYPTO_BUFFER {
+        DWORD Length;
+        DWORD MaximumLength;
+        PBYTE Buffer;
+    } CRYPTO_BUFFER, * PCRYPTO_BUFFER;
+
+    typedef struct _GROUP_MEMBERSHIP
+    {
+        DWORD Rid;
+        DWORD Attributes;
+    } GROUP_MEMBERSHIP, * PGROUP_MEMBERSHIP;
+
+    typedef CONST CRYPTO_BUFFER* PCCRYPTO_BUFFER;
+
+#define RtlEncryptDecryptRC4		SystemFunction032
+
+    EXTERN_C NTSYSAPI NTSTATUS NTAPI
+        RtlEncryptDecryptRC4(
+            IN OUT PCRYPTO_BUFFER data,
+            IN PCCRYPTO_BUFFER key);
+
+#ifdef _LSALOOKUP_
+    typedef HANDLE LSAPR_HANDLE;
+    typedef LSAPR_HANDLE* PLSAPR_HANDLE;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fLsaIOpenPolicyTrusted(
+            OUT PLSAPR_HANDLE PolicyHandle
+        );
+
+    typedef fLsaIOpenPolicyTrusted* pfLsaIOpenPolicyTrusted;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fLsarOpenPolicy(
+            IN PWCHAR SystemName,
+            IN PLSA_OBJECT_ATTRIBUTES ObjectAttributes,
+            IN ACCESS_MASK DesiredAccess,
+            OUT LSAPR_HANDLE* PolicyHandle
+        );
+
+    typedef fLsarOpenPolicy* pfLsarOpenPolicy;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fLsarOpenSecret(
+            IN LSAPR_HANDLE PolicyHandle,
+            IN PLSA_UNICODE_STRING SecretName,
+            IN ACCESS_MASK DesiredAccess,
+            OUT LSA_HANDLE* SecretHandle
+        );
+
+    typedef fLsarOpenSecret* pfLsarOpenSecret;
+
+    typedef struct _LSAPR_CR_CIPHER_VALUE {
+        ULONG Length;
+        ULONG MaximumLength;
+        PUCHAR Buffer;
+    } LSAPR_CR_CIPHER_VALUE, * PLSAPR_CR_CIPHER_VALUE;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fLsarQuerySecret(
+            IN LSAPR_HANDLE SecretHandle,
+            IN OUT PLSAPR_CR_CIPHER_VALUE* EncryptedCurrentValue,
+            IN OUT PLARGE_INTEGER CurrentValueSetTime,
+            IN OUT PLSAPR_CR_CIPHER_VALUE* EncryptedOldValue,
+            IN OUT PLARGE_INTEGER OldValueSetTime
+        );
+
+    typedef fLsarQuerySecret* pfLsarQuerySecret;
+
+    typedef
+        NTSTATUS
+        NTAPI
+        fLsarClose(
+            IN LSAPR_HANDLE Handle
+        );
+
+    typedef fLsarClose* pfLsarClose;
+
+#define SECRET_SET_VALUE    0x00000001
+#define SECRET_QUERY_VALUE  0x00000002
+
+#endif
 
     //
     //  Compressed Data Information structure.  This structure is
@@ -4253,6 +4433,54 @@ extern "C"
         );
 #endif // NTDDI_VERSION >= NTDDI_WINXP
 
+//
+// BOOLEAN
+// RtlEqualLuid(
+//      PLUID L1,
+//      PLUID L2
+//      );
+
+#define RtlEqualLuid(L1, L2) (((L1)->LowPart == (L2)->LowPart) && \
+                              ((L1)->HighPart  == (L2)->HighPart))
+
+//
+// BOOLEAN
+// RtlIsZeroLuid(
+//      PLUID L1
+//      );
+//
+#define RtlIsZeroLuid(L1) ((BOOLEAN) (((L1)->LowPart | (L1)->HighPart) == 0))
+
+    FORCEINLINE
+        LUID
+        NTAPI_INLINE
+        RtlConvertLongToLuid(
+            IN LONG Long
+        )
+    {
+        LUID TempLuid;
+        LARGE_INTEGER TempLi;
+
+        TempLi.QuadPart = Long;
+        TempLuid.LowPart = TempLi.u.LowPart;
+        TempLuid.HighPart = TempLi.u.HighPart;
+        return(TempLuid);
+    }
+
+    FORCEINLINE
+        LUID
+        NTAPI_INLINE
+        RtlConvertUlongToLuid(
+            IN ULONG Ulong
+        )
+    {
+        LUID TempLuid;
+
+        TempLuid.LowPart = Ulong;
+        TempLuid.HighPart = 0;
+        return(TempLuid);
+    }
+
     NTSYSAPI NTSTATUS NTAPI ZwDisplayString(IN PUNICODE_STRING String);
 
     NTSYSAPI NTSTATUS NTAPI NtDisplayString(IN PUNICODE_STRING String);
@@ -4292,23 +4520,29 @@ extern "C"
                 IN PTOKEN_SOURCE TokenSource
             );
 
-        NTSYSCALLAPI
+        typedef
             PVOID
             NTAPI
-            RtlLookupElementGenericTableAvl(
+            fRtlLookupElementGenericTableAvl(
                 IN PVOID Table,
                 IN PVOID Buffer
         );
         
         NTSYSCALLAPI
+            fRtlLookupElementGenericTableAvl RtlLookupElementGenericTableAvl;
+
+        typedef
             PVOID
             NTAPI
-            RtlInsertElementGenericTableAvl(
+            fRtlInsertElementGenericTableAvl(
                 IN PVOID Table,
                 IN PVOID Buffer,
                 IN ULONG BufferSize,
                 IN PBOOLEAN NewElement OPTIONAL
             );
+
+        NTSYSCALLAPI
+            fRtlInsertElementGenericTableAvl RtlInsertElementGenericTableAvl;
 
         typedef struct _TOKEN_SECURITY_ATTRIBUTE_FQBN_VALUE
         {

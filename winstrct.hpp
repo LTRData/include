@@ -33,7 +33,7 @@ public:
     {
         Value = GetLastError();
     }
-
+    
     ~WPreserveLastError()
     {
         SetLastError(Value);
@@ -479,6 +479,114 @@ public:
     }
 
     ~WHeapMem()
+    {
+        Free();
+    }
+};
+
+template<typename T> class WNetApiMem :public WMemHolder<T>
+{
+public:
+    T* operator =(T* pBlk)
+    {
+        Free();
+        return ptr = pBlk;
+    }
+
+    SIZE_T Count() const
+    {
+        return GetSize() / sizeof(T);
+    }
+
+    SIZE_T GetSize(DWORD dwFlags = 0) const
+    {
+        if (ptr == NULL)
+        {
+            return 0;
+        }
+
+        DWORD dwAllocSize;
+
+        DWORD rc = NetApiBufferSize(ptr, &dwAllocSize);
+
+        if (rc == NERR_Success)
+        {
+            return dwAllocSize;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    /* WHeapMem::ReAlloc()
+    *
+    * This function uses NetApiBufferReallocate().
+    */
+    T* ReAlloc(SIZE_T AllocSize, DWORD dwFlags = 0)
+    {
+        if (ptr == NULL)
+        {
+            DWORD rc = NetApiBufferAllocate(dwAllocSize, &ptr);
+
+            if (rc != NERR_Success)
+            {
+                ptr = NULL;
+                SetLastError(rc);
+            }
+
+            return ptr;
+        }
+
+        T* newblock;
+
+        DWORD rc = NetApiBufferReallocate(ptr, AllocSize, &newblock);
+
+        if (rc == NERR_Success)
+        {
+            return ptr = newblock;
+        }
+        else
+        {
+            SetLastError(rc);
+            return NULL;
+        }
+    }
+
+    T* Free()
+    {
+        if ((this == NULL) || (ptr == NULL))
+            return NULL;
+        else if (NetApiBufferFree(ptr))
+            return ptr = NULL;
+        else
+#if _MSC_VER >= 1500
+#pragma warning(suppress: 6001)
+#endif
+            return ptr;
+    }
+
+    WNetApiMem()
+    {
+    }
+
+    explicit WNetApiMem(SIZE_T dwAllocSize, DWORD dwFlags = 0)
+    {
+        DWORD rc = NetApiBufferAllocate(dwAllocSize, &ptr);
+        
+        if (rc != NERR_Success)
+        {
+            ptr = NULL;
+            SetLastError(rc);
+        }
+    }
+
+    explicit WNetApiMem(T* pBlk)
+        : WMemHolder<T>(pBlk)
+    {
+    }
+
+    ~WNetApiMem()
     {
         Free();
     }
