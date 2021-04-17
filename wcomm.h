@@ -133,7 +133,7 @@ struct WCommConfig : public COMMCONFIG
    }
 
    /// Initialize data members using default settings of device name.
-   BOOL Get(LPCSTR lpszName)
+   BOOL Get(LPCTSTR lpszName)
    {
       ZeroMemory(this, sizeof *this);
       dwSize = sizeof(COMMCONFIG);
@@ -141,7 +141,7 @@ struct WCommConfig : public COMMCONFIG
    }
 
    /// Initialize device defaults (by name) using data members.
-   BOOL Set(LPCSTR lpszName)
+   BOOL Set(LPCTSTR lpszName)
    {
       return SetDefaultCommConfig(lpszName, this, sizeof(COMMCONFIG));
    }
@@ -165,7 +165,7 @@ struct WCommConfig : public COMMCONFIG
    }
 
    /// Construct or assign from name of device.
-   WCommConfig(LPCSTR lpszName)
+   WCommConfig(LPCTSTR lpszName)
    {
       Get(lpszName);
    }

@@ -304,12 +304,12 @@ extern "C"
 #define SE_MAX_WELL_KNOWN_PRIVILEGE         (SE_CREATE_SYMBOLIC_LINK_PRIVILEGE)
 
 #define InitializeObjectAttributes( p, n, a, r, s ) { \
-(p)->uLength = sizeof( OBJECT_ATTRIBUTES ); \
-(p)->hRootDirectory = r; \
-(p)->uAttributes = a; \
-(p)->pObjectName = n; \
-(p)->pSecurityDescriptor = s; \
-(p)->pSecurityQualityOfService = NULL; \
+(p)->Length = sizeof( OBJECT_ATTRIBUTES ); \
+(p)->RootDirectory = r; \
+(p)->Attributes = a; \
+(p)->ObjectName = n; \
+(p)->SecurityDescriptor = s; \
+(p)->SecurityQualityOfService = NULL; \
 }
 
 
@@ -355,9 +355,11 @@ extern "C"
         PWSTR Buffer;
     } UNICODE_STRING, *PUNICODE_STRING;
 
-    typedef const PUNICODE_STRING PCUNICODE_STRING;
-
 #endif
+
+    typedef const PSTRING PCSTRING;
+
+    typedef const PUNICODE_STRING PCUNICODE_STRING;
 
     typedef STRING ANSI_STRING;
     typedef PSTRING PANSI_STRING;
@@ -2464,6 +2466,24 @@ extern "C"
 
 #endif
 
+    //
+    // Event Specific Access Rights.
+    //
+
+#define EVENT_QUERY_STATE       0x0001
+#define EVENT_MODIFY_STATE      0x0002  
+#define EVENT_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED|SYNCHRONIZE|0x3) 
+
+
+//
+// Semaphore Specific Access Rights.
+//
+
+#define SEMAPHORE_QUERY_STATE       0x0001
+#define SEMAPHORE_MODIFY_STATE      0x0002  
+
+#define SEMAPHORE_ALL_ACCESS (STANDARD_RIGHTS_REQUIRED|SYNCHRONIZE|0x3) 
+
     // Event functions 
     NTSYSAPI
         NTSTATUS
@@ -2557,16 +2577,29 @@ extern "C"
     NTSYSAPI
         NTSTATUS
         NTAPI
-        NtOpenSymbolicLinkObject(OUT PHANDLE SymbolicLinkHandle,
-            IN ACCESS_MASK DesiredAccess,
-            IN POBJECT_ATTRIBUTES ObjectAttributes);
+        NtCreateSymbolicLinkObject(
+            OUT PHANDLE             LinkHandle,
+            IN ACCESS_MASK          DesiredAccess,
+            IN POBJECT_ATTRIBUTES   ObjectAttributes,
+            IN PUNICODE_STRING      DestinationName);
 
     NTSYSAPI
         NTSTATUS
         NTAPI
-        NtQuerySymbolicLinkObject(IN HANDLE SymbolicLinkHandle,
-            OUT PUNICODE_STRING NameString,
-            OUT PULONG ResultLength OPTIONAL);
+        NtOpenSymbolicLinkObject(
+            OUT PHANDLE LinkHandle,
+            IN ACCESS_MASK DesiredAccess,
+            IN POBJECT_ATTRIBUTES ObjectAttributes
+        );
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtQuerySymbolicLinkObject(
+            IN HANDLE LinkHandle,
+            IN OUT PUNICODE_STRING LinkTarget,
+            OUT PULONG ReturnedLength OPTIONAL
+        );
 
     typedef
         NTSTATUS
@@ -3374,6 +3407,16 @@ extern "C"
         NTAPI
         NtResumeThread(IN HANDLE ThreadHandle,
             OUT PULONG PreviousSuspendCount OPTIONAL);
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtSuspendProcess(IN HANDLE ProcessHandle);
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtResumeProcess(IN HANDLE ProcessHandle);
 
     typedef enum _THREADINFOCLASS
     {

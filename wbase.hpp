@@ -23,11 +23,20 @@ protected:
     }
 
 public:
+    /// Stops keeping track of handle without closing it.
+    HANDLE Abandon()
+    {
+        HANDLE h = hObject;
+        hObject = INVALID_HANDLE_VALUE;
+        return h;
+    }
+
     /// Returns the handle to the embedded kernel object.
     HANDLE Handle() const
     {
         return hObject;
     }
+
     /// Returns a new handle duplicated from the embedded. 
     HANDLE NewHandle(BOOL bInheritHandle = FALSE,
         DWORD dwOptions = DUPLICATE_SAME_ACCESS,

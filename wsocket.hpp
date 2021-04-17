@@ -149,7 +149,7 @@ public:
             == SOCKET_ERROR)
             return 0;
 
-        return sin.sin_port;
+        return ntohs(sin.sin_port);
     }
 
     u_short GetPeerPort()
@@ -161,7 +161,7 @@ public:
             == SOCKET_ERROR)
             return 0;
 
-        return sin.sin_port;
+        return ntohs(sin.sin_port);
     }
 
     u_long GetLocalAddr()
@@ -176,6 +176,18 @@ public:
         return sin.sin_addr.s_addr;
     }
 
+    char *GetLocalAddrString()
+        const
+    {
+        sockaddr_in sin;
+        int sinsize = sizeof sin;
+        if (getsockname((SOCKET)hObject, (sockaddr*)&sin, &sinsize)
+            == SOCKET_ERROR)
+            return 0;
+
+        return inet_ntoa(sin.sin_addr);
+    }
+
     u_long GetPeerAddr()
         const
     {
@@ -188,6 +200,18 @@ public:
         return sin.sin_addr.s_addr;
     }
 
+    char *GetPeerAddrString()
+        const
+    {
+        sockaddr_in sin;
+        int sinsize = sizeof sin;
+        if (getpeername((SOCKET)hObject, (sockaddr*)&sin, &sinsize)
+            == SOCKET_ERROR)
+            return 0;
+
+        return inet_ntoa(sin.sin_addr);
+    }
+
     int Shutdown(int how = 2)
     {
         return shutdown((SOCKET)hObject, how);
@@ -197,19 +221,36 @@ public:
 class WSocketTCP : public WSocket
 {
 public:
-	WSocketTCP() : WSocket(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
-	{
-	}
+    WSocketTCP() : WSocket(socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
+    {
+    }
 
-	bool ReCreate()
+    WSocketTCP(SOCKET sock) : WSocket(sock)
+    {
+    }
+
+    bool ReCreate()
 	{
 		Close();
 		hObject = (HANDLE)socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 		return IsValidHandle();
 	}
+
+    bool Connect(LPCSTR szServer, LPCSTR szService)
+        const
+    {
+        return WSocket::Connect(szServer, szService, "tcp");
+    }
+
+    int SetNoDelay(bool no_delay)
+        const
+    {
+        return setsockopt((SOCKET)hObject, IPPROTO_TCP, TCP_NODELAY,
+            (const char*)&no_delay, sizeof no_delay);
+    }
 };
 
-class WSocketTCPAccept : public WSocket
+class WSocketTCPAccept : public WSocketTCP
 {
 	static SOCKET Accept(SOCKET s, sockaddr_in *addr, int *addrlen)
 	{
@@ -221,9 +262,13 @@ public:
 	sockaddr_in addr;
 	int addr_len;
 
-	explicit WSocketTCPAccept(SOCKET s) : WSocket(Accept(s, &addr, &addr_len))
-	{
-	}
+    explicit WSocketTCPAccept(WSocketTCP &s) : WSocketTCP(Accept((SOCKET)s.Handle(), &addr, &addr_len))
+    {
+    }
+
+    explicit WSocketTCPAccept(SOCKET s) : WSocketTCP(Accept(s, &addr, &addr_len))
+    {
+    }
 };
 
 class WSocketUDP : public WSocket
