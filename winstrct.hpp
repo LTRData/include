@@ -207,6 +207,11 @@ public:
         return ptr;
     }
 
+    template<typename Tn> Tn* CastPtr()
+    {
+        return (Tn*)ptr;
+    }
+
     T* GetPtr(LONG_PTR offset)
     {
         return ptr + offset;

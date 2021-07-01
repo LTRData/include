@@ -4,12 +4,7 @@
 #include <windows.h>
 #include <stdio.h>
 
-#ifndef _QWORD_DEFINED
-typedef DWORDLONG QWORD;
-#define _QWORD_DEFINED
-#endif
-
-// 1/10 µs between 1 jan 1601 and 1 jan 1900.
+// 1/10 µs between 1 Jan 1601 and 1 Jan 1900.
 #define FILETIME_19000101 (94354848000000000)
 
 #ifdef _M_ARM
@@ -24,7 +19,7 @@ typedef DWORDLONG QWORD;
 
 #ifdef __cplusplus
 
-// Enhanced FILETIME stucture with encapsulated API functions,
+// Enhanced FILETIME structure with encapsulated API functions,
 // compare operators and type conversions
 struct WFileTime : public FILETIME
 {
@@ -55,9 +50,31 @@ struct WFileTime : public FILETIME
         return CompareFileTime(this, &wft) < 0;
     }
 
-    bool operator <=(CONST WFileTime &wft) const
+    bool operator <=(CONST WFileTime& wft) const
     {
         return CompareFileTime(this, &wft) <= 0;
+    }
+
+    WFileTime operator +(CONST WFileTime& wft)
+    {
+        return *(LONGLONG*)this + *(LONGLONG*)&wft;
+    }
+
+    WFileTime operator -(CONST WFileTime& wft)
+    {
+        return *(LONGLONG*)this - *(LONGLONG*)&wft;
+    }
+
+    WFileTime& operator +=(CONST WFileTime& wft)
+    {
+        *(LONGLONG*)this += *(LONGLONG*)&wft;
+        return *this;
+    }
+
+    WFileTime& operator -=(CONST WFileTime& wft)
+    {
+        *(LONGLONG*)this -= *(LONGLONG*)&wft;
+        return *this;
     }
 
     // Convert to DOS FAT date and time
@@ -77,9 +94,15 @@ struct WFileTime : public FILETIME
     }
 
     // Type conversions
-    operator QWORD() const
+    operator DWORDLONG() const
     {
-        return *(QWORD*)this;
+        return *(DWORDLONG*)this;
+    }
+
+    // Type conversions
+    operator LONGLONG() const
+    {
+        return *(LONGLONG*)this;
     }
 
     // Constructors
@@ -94,9 +117,47 @@ struct WFileTime : public FILETIME
     }
 
     // Construct from QWORD value
-    WFileTime(QWORD qw)
+    WFileTime(DWORDLONG qw)
     {
-        *(QWORD*)this = qw;
+        *(DWORDLONG*)this = qw;
+    }
+
+    // Construct from QWORD value
+    WFileTime(LONGLONG qw)
+    {
+        *(LONGLONG*)this = qw;
+    }
+
+    bool IsZero() const
+    {
+        return (dwLowDateTime == 0) && (dwHighDateTime == 0);
+    }
+
+    void PrintAbsoluteTime()
+    {
+        DWORDLONG qwTime = *(DWORDLONG*)this;
+        double dblMilliseconds;
+        DWORD dwSeconds;
+        DWORD dwMinutes;
+        DWORD dwHours;
+        DWORD dwDays;
+        DWORD dwWeeks;
+
+        dwWeeks = (DWORD)(qwTime / 6048000000000); qwTime %= 6048000000000;
+        dwDays = (DWORD)(qwTime / 864000000000); qwTime %= 864000000000;
+        dwHours = (DWORD)(qwTime / 36000000000); qwTime %= 36000000000;
+        dwMinutes = (DWORD)(qwTime / 600000000); qwTime %= 600000000;
+        dwSeconds = (DWORD)(qwTime / 10000000); qwTime %= 10000000;
+        dblMilliseconds = (double)qwTime / 10000;
+
+        if (dwWeeks)
+            printf("%u weeks, ", dwWeeks);
+
+        if (dwDays)
+            printf("%u days, ", dwDays);
+
+        printf("%u:%.2u:%.2u %f",
+            dwHours, dwMinutes, dwSeconds, dblMilliseconds);
     }
 
     // Construct from DOS FAT date and time
@@ -108,11 +169,11 @@ struct WFileTime : public FILETIME
     // Empty constructor
     WFileTime()
     {
-        *(QWORD*)this = 0;
+        *(DWORDLONG*)this = 0;
     }
 };
 
-// Enhanced SYSTEMTIME stucture with encapsulated API functions and type
+// Enhanced SYSTEMTIME structure with encapsulated API functions and type
 // conversions
 struct WSystemTime : public SYSTEMTIME
 {
@@ -226,7 +287,7 @@ struct WSystemTime : public SYSTEMTIME
     }
 };
 
-// Enhanced TIME_ZONE_INFORMATION stucture with encapsulated API functions
+// Enhanced TIME_ZONE_INFORMATION structure with encapsulated API functions
 struct WTimeZoneInformation : public TIME_ZONE_INFORMATION
 {
     operator TIME_ZONE_INFORMATION() const

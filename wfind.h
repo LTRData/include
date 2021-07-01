@@ -4,11 +4,6 @@
 #include <wtime.h>
 #include <winspool.h>
 
-#ifndef _QWORD_DEFINED
-typedef DWORDLONG QWORD;
-#define _QWORD_DEFINED
-#endif
-
 #pragma warning(push)
 #pragma warning(disable:4355)
 
@@ -41,21 +36,21 @@ class WFileFinder : public WIN32_FIND_DATA
       return *(WFileTime*)&ftLastWriteTime;
    }
 
-   /// Returns file size as QWORD.
-   QWORD GetFile64BitSize() const
+   /// Returns file size as DWORDLONG.
+   DWORDLONG GetFile64BitSize() const
    {
-      return ((QWORD)nFileSizeHigh * MAXDWORD) + nFileSizeLow;
+      return ((DWORDLONG)nFileSizeHigh * MAXDWORD) + nFileSizeLow;
    }
 
-   /// Returns compressed file size as QWORD.
-   QWORD GetCompressedFile64BitSize() const
+   /// Returns compressed file size as DWORDLONG.
+   DWORDLONG GetCompressedFile64BitSize() const
    {
       ULARGE_INTEGER uliSize;
       uliSize.u.LowPart =
          GetCompressedFileSize(cFileName, &uliSize.u.HighPart);
 
       if (uliSize.u.LowPart == MAXDWORD ? GetLastError() != NO_ERROR : false)
-	return (QWORD)-1i64;
+	return (DWORDLONG)-1i64;
 
       return uliSize.QuadPart;
    }
@@ -103,27 +98,31 @@ class WFilteredFileFinder : public WFileFinder
    /// Checks found file against filter.
    BOOL Filter() 
    {
-      if( !(dwFileAttributes & dwFileAttrMask) &
-         !(~dwFileAttributes & dwFileAttrRequired) &
-         (*(QWORD*)&ftCreationTime >= ftCreationTime1) &
-         (*(QWORD*)&ftCreationTime <= ftCreationTime2) &
-         (*(QWORD*)&ftLastAccessTime >= ftLastAccessTime1) &
-         (*(QWORD*)&ftLastAccessTime <= ftLastAccessTime2) &
-         (*(QWORD*)&ftLastWriteTime >= ftLastWriteTime1) &
-         (*(QWORD*)&ftLastWriteTime <= ftLastWriteTime2) &
-         ((((QWORD)nFileSizeHigh * MAXDWORD) + nFileSizeLow) >= qwMinSize) &
-         ((((QWORD)nFileSizeHigh * MAXDWORD) + nFileSizeLow) <= qwMaxSize) )
-         return true;
-      else
-      {
-         if( !WFileFinder::Next() )  // Find next if this didn't match
-            return false;
+       if (!(dwFileAttributes & dwFileAttrMask) &&
+           !(~dwFileAttributes & dwFileAttrRequired) &&
+           (*(WFileTime*)&ftCreationTime >= ftCreationTime1) &&
+           (*(WFileTime*)&ftCreationTime <= ftCreationTime2) &&
+           (*(WFileTime*)&ftLastAccessTime >= ftLastAccessTime1) &&
+           (*(WFileTime*)&ftLastAccessTime <= ftLastAccessTime2) &&
+           (*(WFileTime*)&ftLastWriteTime >= ftLastWriteTime1) &&
+           (*(WFileTime*)&ftLastWriteTime <= ftLastWriteTime2) &&
+           ((((DWORDLONG)nFileSizeHigh * MAXDWORD) + nFileSizeLow) >= qwMinSize) &&
+           ((((DWORDLONG)nFileSizeHigh * MAXDWORD) + nFileSizeLow) <= qwMaxSize))
+       {
+           return true;
+       }
+       else
+       {
+           if (!WFileFinder::Next())  // Find next if this didn't match
+           {
+               return false;
+           }
 
 #ifdef RECURSE_SLEEP
-         RECURSE_SLEEP;
+           RECURSE_SLEEP;
 #endif
-         return Filter();
-      }
+           return Filter();
+       }
    }
 
    public:
@@ -131,8 +130,8 @@ class WFilteredFileFinder : public WFileFinder
    DWORD dwFileAttrMask;
    /// Specify attributes files must have
    DWORD dwFileAttrRequired;
-   QWORD qwMinSize;                      // File size interval
-   QWORD qwMaxSize;
+   DWORDLONG qwMinSize;                      // File size interval
+   DWORDLONG qwMaxSize;
    WFileTime ftLastWriteTime1;  // Last write time interval
    WFileTime ftLastWriteTime2;
    WFileTime ftLastAccessTime1; // Last access time interval
@@ -143,32 +142,32 @@ class WFilteredFileFinder : public WFileFinder
    /// Overridden operator=() with filter function.
    WFilteredFileFinder& operator =(LPCTSTR lpFileName)
    {
-      WFileFinder::operator=(lpFileName);
+       WFileFinder::operator=(lpFileName);
 
-      if (hFind == INVALID_HANDLE_VALUE)
-         return *this;
+       if (hFind == INVALID_HANDLE_VALUE)
+           return *this;
 
-      if (!Filter())
-         if (hFind != INVALID_HANDLE_VALUE)
-         {
-            FindClose(hFind);
-            hFind = INVALID_HANDLE_VALUE;
-         }
-      return *this;
+       if (!Filter() && hFind != INVALID_HANDLE_VALUE)
+       {
+           FindClose(hFind);
+           hFind = INVALID_HANDLE_VALUE;
+       }
+
+       return *this;
    }
 
    /// Begin find with file name pattern and initialize filter data.
    WFilteredFileFinder(LPCTSTR lpFileName,
       DWORD dwSetFileAttrMask = 0,     // Specify attributes not to find
       DWORD dwSetFileAttrRequired = 0,   // Specify attributes to find
-      QWORD qwSetMinSize = 0,                      // File size interval
-      QWORD qwSetMaxSize = (QWORD)-1,
-      WFileTime ftSetLastWriteTime1 = 0,  // Last write time interval
-      WFileTime ftSetLastWriteTime2 = (QWORD)-1,
-      WFileTime ftSetLastAccessTime1 = 0, // Last access time interval
-      WFileTime ftSetLastAccessTime2 = (QWORD)-1,
-      WFileTime ftSetCreationTime1 = 0,   // Creation time interval
-      WFileTime ftSetCreationTime2 = (QWORD)-1
+      DWORDLONG qwSetMinSize = 0,                      // File size interval
+      DWORDLONG qwSetMaxSize = (DWORDLONG)-1,
+      WFileTime ftSetLastWriteTime1 = 0ULL,  // Last write time interval
+      WFileTime ftSetLastWriteTime2 = (DWORDLONG)-1,
+      WFileTime ftSetLastAccessTime1 = 0ULL, // Last access time interval
+      WFileTime ftSetLastAccessTime2 = (DWORDLONG)-1,
+      WFileTime ftSetCreationTime1 = 0ULL,   // Creation time interval
+      WFileTime ftSetCreationTime2 = (DWORDLONG)-1
    )
    : WFileFinder(lpFileName), dwFileAttrMask(dwSetFileAttrMask),
    dwFileAttrRequired(dwSetFileAttrRequired), qwMinSize(qwSetMinSize),

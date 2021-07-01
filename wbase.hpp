@@ -97,6 +97,27 @@ public:
     }
 };
 
+template<typename T> class WUsing
+{
+public:
+    T Object;
+    void (*Destructor)(T object);
+
+    WUsing(T object, void (*destructor)(T)) :
+        Object(object), Destructor(destructor)
+    {}
+
+    ~WUsing()
+    {
+        if (Object != NULL && Destructor != NULL)
+        {
+            Destructor(Object);
+        }
+
+        Object = NULL;
+    }
+};
+
 /**
 Base class for all kernel object wrapping classes.
 Uses CloseHandle() on the embedded handle when object is destroyed.
