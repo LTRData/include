@@ -567,7 +567,7 @@ __forceinline LPSTR pdh_errmsgA(DWORD dwErrorCode)
     }
     else if (FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_STRING |
-        FORMAT_MESSAGE_ARGUMENT_ARRAY, "Error %1!i!%n", 0, 0,
+        FORMAT_MESSAGE_ARGUMENT_ARRAY, "Error %1!#x!%n", 0, 0,
         (LPSTR)&errmsg, 0, (va_list*)&dwErrorCode))
     {
         return errmsg;
@@ -591,7 +591,7 @@ __forceinline LPWSTR pdh_errmsgW(DWORD dwErrorCode)
     }
     else if (FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_STRING |
-        FORMAT_MESSAGE_ARGUMENT_ARRAY, L"Error %1!i!%n", 0,
+        FORMAT_MESSAGE_ARGUMENT_ARRAY, L"Error 0x%1!x!%n", 0,
         0, (LPWSTR)&errmsg, 0, (va_list*)&dwErrorCode))
     {
         return errmsg;
@@ -629,7 +629,7 @@ __forceinline LPSTR nt_errmsgA(NTSTATUS dwErrorCode)
     }
     else if (FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_STRING |
-        FORMAT_MESSAGE_ARGUMENT_ARRAY, "Error %1!i!%n", 0, 0,
+        FORMAT_MESSAGE_ARGUMENT_ARRAY, "Error %1!#x!%n", 0, 0,
         (LPSTR)&errmsg, 0, (va_list*)&dwErrorCode))
     {
         return errmsg;
@@ -653,7 +653,7 @@ __forceinline LPWSTR nt_errmsgW(NTSTATUS dwErrorCode)
     }
     else if (FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_STRING |
-        FORMAT_MESSAGE_ARGUMENT_ARRAY, L"Error %1!i!%n", 0,
+        FORMAT_MESSAGE_ARGUMENT_ARRAY, L"Error 0x%1!x!%n", 0,
         0, (LPWSTR)&errmsg, 0, (va_list*)&dwErrorCode))
     {
         return errmsg;
