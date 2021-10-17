@@ -17,7 +17,7 @@ protected:
     /// The handle to the embedded kernel object.
     HANDLE hObject;
 
-    explicit WObjectHandle(HANDLE handle = INVALID_HANDLE_VALUE)
+    explicit WObjectHandle(HANDLE handle = NULL)
         : hObject(handle)
     {
     }

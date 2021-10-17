@@ -3,6 +3,46 @@
 
 #include <winstrct.h>
 
+inline
+VS_FIXEDFILEINFO *
+WINAPI
+GetModuleVersionInfo(HMODULE hmodule)
+{
+    HRSRC res = FindResource(hmodule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
+
+    if (res == NULL)
+    {
+        return NULL;
+    }
+
+    HGLOBAL resmem = LoadResource(hmodule, res);
+
+    if (resmem == NULL)
+    {
+        return NULL;
+    }
+
+    typedef struct {
+        WORD             wLength;
+        WORD             wValueLength;
+        WORD             wType;
+        WCHAR            szKey[_countof(L"VS_VERSION_INFO")];
+        WORD             Padding1[1];
+        VS_FIXEDFILEINFO FixedFileInfo;
+    } VS_VERSIONINFO, * LPVS_VERSIONINFO;
+
+    LPVS_VERSIONINFO resptr = (LPVS_VERSIONINFO)LockResource(resmem);
+
+    if (resptr == NULL ||
+        resptr->wType != 0 ||
+        resptr->FixedFileInfo.dwSignature != 0xFEEF04BD)
+    {
+        return NULL;
+    }
+
+    return &resptr->FixedFileInfo;
+}
+
 class WFileVerInfo : public WHeapMem<VOID>
 {
 public:

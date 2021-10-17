@@ -1674,22 +1674,25 @@ extern "C"
         MaxSystemInfoClass
     } SYSTEMINFOCLASS, *PSYSTEMINFOCLASS;
 
-    typedef struct _SYSTEM_BASIC_INFORMATION
-    {
-        DWORD dwUnknown1;		// 0 
-        ULONG uKeMaximumIncrement;	// x86: 0x0002625A or 0x00018730 
-        ULONG uPageSize;		// bytes 
-        ULONG uMmNumberOfPhysicalPages;
-        ULONG uMmLowestPhysicalPage;
-        ULONG uMmHighestPhysicalPage;
-        ULONG uAllocationGranularity;	// bytes 
-        PVOID pLowestUserAddress;
-        PVOID pMmHighestUserAddress;
-        KAFFINITY uKeActiveProcessors;
-        BYTE bKeNumberProcessors;
-        BYTE bUnknown2;
-        WORD wUnknown3;
-    } SYSTEM_BASIC_INFORMATION, *PSYSTEM_BASIC_INFORMATION;
+#if defined(_WIN64)
+    typedef ULONG SYSINF_PAGE_COUNT;
+#else
+    typedef SIZE_T SYSINF_PAGE_COUNT;
+#endif
+
+    typedef struct _SYSTEM_BASIC_INFORMATION {
+        ULONG Reserved;
+        ULONG TimerResolution;
+        ULONG PageSize;
+        SYSINF_PAGE_COUNT NumberOfPhysicalPages;
+        SYSINF_PAGE_COUNT LowestPhysicalPageNumber;
+        SYSINF_PAGE_COUNT HighestPhysicalPageNumber;
+        ULONG AllocationGranularity;
+        ULONG_PTR MinimumUserModeAddress;
+        ULONG_PTR MaximumUserModeAddress;
+        ULONG_PTR ActiveProcessorsAffinityMask;
+        CCHAR NumberOfProcessors;
+    } SYSTEM_BASIC_INFORMATION, * PSYSTEM_BASIC_INFORMATION;
 
     typedef struct _SYSTEM_PROCESSOR_INFORMATION
     {
@@ -2245,10 +2248,10 @@ extern "C"
 
     typedef struct _SYSTEM_REGISTRY_QUOTA_INFORMATION
     {
-        ULONG RegistryQuotaAllowed;	// bytes 
-        ULONG RegistryQuotaUsed;	// bytes 
-        ULONG PagedPoolSize;	// bytes 
-    } SYSTEM_REGISTRY_QUOTA_INFORMATION, *PSYSTEM_REGISTRY_QUOTA_INFORMATION;
+        ULONG  RegistryQuotaAllowed;
+        ULONG  RegistryQuotaUsed;
+        SIZE_T PagedPoolSize;
+    } SYSTEM_REGISTRY_QUOTA_INFORMATION, * PSYSTEM_REGISTRY_QUOTA_INFORMATION;
 
     typedef struct _SYSTEM_ADD_DRIVER
     {
@@ -3996,6 +3999,17 @@ extern "C"
     NTSYSAPI UINT NTAPI RtlDetermineDosPathNameType_U(IN PWSTR Path);
 
     NTSYSAPI UINT NTAPI RtlIsDosDeviceName_U(IN PWSTR Path);
+
+    NTSYSAPI SIZE_T NTAPI RtlCompareMemoryUlong(
+        IN PVOID  Source,
+        SIZE_T Length,
+        ULONG  Pattern
+    );
+
+    NTSYSAPI BOOLEAN NTAPI RtlIsZeroMemory(
+        PVOID  Buffer,
+        SIZE_T Length
+    );
 
     NTSYSAPI
         BOOLEAN

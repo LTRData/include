@@ -434,7 +434,7 @@ struct WPipe
 
     bool operator !()
     {
-        return (!Read) | (!Write);
+        return (!Read) || (!Write);
     }
 
     explicit WPipe(SECURITY_ATTRIBUTES *sa = NULL, DWORD dwBufferSize = 0)
