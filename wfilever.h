@@ -4,9 +4,9 @@
 #include <winstrct.h>
 
 inline
-VS_FIXEDFILEINFO *
+LPVOID
 WINAPI
-GetModuleVersionInfo(HMODULE hmodule)
+GetModuleVersionResource(HMODULE hmodule)
 {
     HRSRC res = FindResource(hmodule, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
 
@@ -22,6 +22,142 @@ GetModuleVersionInfo(HMODULE hmodule)
         return NULL;
     }
 
+    return LockResource(resmem);
+}
+
+inline
+LPVOID
+WINAPI
+GetRawFileVersionResource(LPVOID FileData, LPDWORD ResourceSize)
+{
+    PIMAGE_NT_HEADERS header = ImageNtHeader(FileData);
+
+    if (header == NULL || header->Signature != 0x4550 || header->FileHeader.SizeOfOptionalHeader == 0)
+    {
+        SetLastError(ERROR_RESOURCE_TYPE_NOT_FOUND);
+        return NULL;
+    }
+
+    PIMAGE_DATA_DIRECTORY resource_header = NULL;
+
+    if (header->FileHeader.SizeOfOptionalHeader == sizeof(IMAGE_OPTIONAL_HEADER32))
+    {
+        PIMAGE_OPTIONAL_HEADER32 optional_header = (PIMAGE_OPTIONAL_HEADER32)&header->OptionalHeader;
+        resource_header = &optional_header->DataDirectory[2];
+    }
+    else if (header->FileHeader.SizeOfOptionalHeader == sizeof(IMAGE_OPTIONAL_HEADER64))
+    {
+        PIMAGE_OPTIONAL_HEADER64 optional_header = (PIMAGE_OPTIONAL_HEADER64)&header->OptionalHeader;
+        resource_header = &optional_header->DataDirectory[2];
+    }
+    else
+    {
+        SetLastError(ERROR_RESOURCE_TYPE_NOT_FOUND);
+        return NULL;
+    }
+
+    PIMAGE_SECTION_HEADER section_table = (PIMAGE_SECTION_HEADER)((LPBYTE)&header->OptionalHeader + header->FileHeader.SizeOfOptionalHeader);
+    PIMAGE_SECTION_HEADER section_header = NULL;
+
+    for (int i = 0; i < header->FileHeader.NumberOfSections; i++)
+    {
+        if (strcmp((const char*)section_table[i].Name, ".rsrc") != 0)
+        {
+            continue;
+        }
+
+        section_header = section_table + i;
+        break;
+    }
+
+    if (section_header == NULL)
+    {
+        SetLastError(ERROR_RESOURCE_DATA_NOT_FOUND);
+        return NULL;
+    }
+
+    LPBYTE raw = (LPBYTE)FileData + section_header->PointerToRawData;
+
+    PIMAGE_RESOURCE_DIRECTORY resource_section = (PIMAGE_RESOURCE_DIRECTORY)(raw + (resource_header->VirtualAddress - section_header->VirtualAddress));
+    PIMAGE_RESOURCE_DIRECTORY_ENTRY resource_dir_entry = (PIMAGE_RESOURCE_DIRECTORY_ENTRY)(resource_section + 1);
+
+    for (int i = 0; i < resource_section->NumberOfNamedEntries + resource_section->NumberOfIdEntries; i++)
+    {
+        if (!resource_dir_entry[i].NameIsString &&
+            MAKEINTRESOURCE(resource_dir_entry[i].Id) == RT_VERSION &&
+            resource_dir_entry[i].DataIsDirectory)
+        {
+            PIMAGE_RESOURCE_DIRECTORY_ENTRY found_entry = resource_dir_entry + i;
+            PIMAGE_RESOURCE_DIRECTORY found_dir = (PIMAGE_RESOURCE_DIRECTORY)((LPBYTE)resource_section + found_entry->OffsetToDirectory);
+
+            if ((found_dir->NumberOfIdEntries + found_dir->NumberOfNamedEntries) == 0)
+            {
+                continue;
+            }
+
+            PIMAGE_RESOURCE_DIRECTORY_ENTRY found_dir_entry = (PIMAGE_RESOURCE_DIRECTORY_ENTRY)(found_dir + 1);
+
+            for (int j = 0; j < found_dir->NumberOfNamedEntries + found_dir->NumberOfIdEntries; j++)
+            {
+                if (!found_dir_entry[j].DataIsDirectory)
+                {
+                    continue;
+                }
+
+                PIMAGE_RESOURCE_DIRECTORY found_subdir = (PIMAGE_RESOURCE_DIRECTORY)((LPBYTE)resource_section + found_dir_entry->OffsetToDirectory);
+
+                if ((found_subdir->NumberOfIdEntries + found_subdir->NumberOfNamedEntries) == 0)
+                {
+                    continue;
+                }
+
+                PIMAGE_RESOURCE_DIRECTORY_ENTRY found_subdir_entry = (PIMAGE_RESOURCE_DIRECTORY_ENTRY)(found_subdir + 1);
+
+                if (found_subdir_entry->DataIsDirectory)
+                {
+                    continue;
+                }
+
+                PIMAGE_RESOURCE_DATA_ENTRY found_data_entry = (PIMAGE_RESOURCE_DATA_ENTRY)((LPBYTE)resource_section + found_subdir_entry->OffsetToData);
+
+                typedef struct {
+                    WORD             wLength;
+                    WORD             wValueLength;
+                    WORD             wType;
+                    WCHAR            szKey[_countof(L"VS_VERSION_INFO")];
+                    WORD             Padding1[1];
+                    VS_FIXEDFILEINFO FixedFileInfo;
+                } VS_VERSIONINFO, * LPVS_VERSIONINFO;
+
+                LPVS_VERSIONINFO resptr = (LPVS_VERSIONINFO)(raw + (found_data_entry->OffsetToData - section_header->VirtualAddress));
+
+                if (resptr->wType != 0 ||
+                    memcmp(resptr->szKey, L"VS_VERSION_INFO", sizeof(resptr->szKey)) != 0 ||
+                    resptr->FixedFileInfo.dwSignature != 0xFEEF04BD)
+                {
+                    SetLastError(ERROR_RESOURCE_DATA_NOT_FOUND);
+                    return NULL;
+                }
+
+                if (ResourceSize != NULL)
+                {
+                    *ResourceSize = found_data_entry->Size;
+                }
+
+                return resptr;
+            }
+        }
+    }
+
+    SetLastError(ERROR_RESOURCE_TYPE_NOT_FOUND);
+    return NULL;
+}
+
+inline
+VS_FIXEDFILEINFO*
+WINAPI
+GetFixedVersionInfo(LPVOID VersionResource)
+{
     typedef struct {
         WORD             wLength;
         WORD             wValueLength;
@@ -31,16 +167,33 @@ GetModuleVersionInfo(HMODULE hmodule)
         VS_FIXEDFILEINFO FixedFileInfo;
     } VS_VERSIONINFO, * LPVS_VERSIONINFO;
 
-    LPVS_VERSIONINFO resptr = (LPVS_VERSIONINFO)LockResource(resmem);
+    LPVS_VERSIONINFO resptr = (LPVS_VERSIONINFO)VersionResource;
 
     if (resptr == NULL ||
         resptr->wType != 0 ||
+        memcmp(resptr->szKey, L"VS_VERSION_INFO", sizeof(resptr->szKey)) != 0 ||
         resptr->FixedFileInfo.dwSignature != 0xFEEF04BD)
     {
+        SetLastError(ERROR_RESOURCE_DATA_NOT_FOUND);
         return NULL;
     }
 
     return &resptr->FixedFileInfo;
+}
+
+inline
+VS_FIXEDFILEINFO*
+WINAPI
+GetModuleVersionInfo(HMODULE hmodule)
+{
+    LPVOID resource = GetModuleVersionResource(hmodule);
+
+    if (resource == NULL)
+    {
+        return NULL;
+    }
+
+    return GetFixedVersionInfo(hmodule);
 }
 
 class WFileVerInfo : public WHeapMem<VOID>
@@ -330,7 +483,7 @@ public:
             return false;
     }
 
-    bool PrintCommonFileVerRecords() const
+    bool PrintCommonFileVerRecordsA() const
     {
         if (!*this)
         {
@@ -339,47 +492,95 @@ public:
         }
 
         LPDWORD lpdwTranslationCode =
-            (LPDWORD)QueryValue(TEXT("\\VarFileInfo\\Translation"));
+            (LPDWORD)QueryValue("\\VarFileInfo\\Translation");
 
         DWORD dwTranslationCode;
         if (lpdwTranslationCode)
         {
             dwTranslationCode = *lpdwTranslationCode;
-            TCHAR tcLanguageName[128];
-            if (VerLanguageName(dwTranslationCode & 0x0000FFFF, tcLanguageName,
+            CHAR tcLanguageName[128];
+            if (VerLanguageNameA(dwTranslationCode & 0x0000FFFF, tcLanguageName,
                 _countof(tcLanguageName)))
             {
-#ifndef UNICODE
-                CharToOem(tcLanguageName, tcLanguageName);
-#endif
+                CharToOemA(tcLanguageName, tcLanguageName);
                 printf("Language: (0x%X) %s\n", dwTranslationCode,
                     tcLanguageName);
             }
         }
         else
+        {
             dwTranslationCode = 0x04E40409;
+        }
 
-        PrintFileVerRecord(TEXT("CompanyName"), TEXT("Company name"),
+        PrintFileVerRecord("CompanyName", "Company name",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("FileDescription"), TEXT("File description"),
+        PrintFileVerRecord("FileDescription", "File description",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("FileVersion"), TEXT("File version"),
+        PrintFileVerRecord("FileVersion", "File version",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("InternalName"), TEXT("Internal name"),
+        PrintFileVerRecord("InternalName", "Internal name",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("LegalCopyright"), TEXT("Legal copyright"),
+        PrintFileVerRecord("LegalCopyright", "Legal copyright",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("OriginalFilename"), TEXT("Original filename"),
+        PrintFileVerRecord("OriginalFilename", "Original filename",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("ProductName"), TEXT("Product name"),
+        PrintFileVerRecord("ProductName", "Product name",
             dwTranslationCode);
-        PrintFileVerRecord(TEXT("ProductVersion"), TEXT("Product version"),
+        PrintFileVerRecord("ProductVersion", "Product version",
             dwTranslationCode);
 
         return true;
     }
 
-    DWORD GetLanguageName(LPTSTR szLang, DWORD nSize)
+    bool PrintCommonFileVerRecordsW() const
+    {
+        if (!*this)
+        {
+            SetLastError(ERROR_NO_MORE_ITEMS);
+            return false;
+        }
+
+        LPDWORD lpdwTranslationCode =
+            (LPDWORD)QueryValue(L"\\VarFileInfo\\Translation");
+
+        DWORD dwTranslationCode;
+        if (lpdwTranslationCode)
+        {
+            dwTranslationCode = *lpdwTranslationCode;
+            WCHAR tcLanguageName[128];
+            if (VerLanguageNameW(dwTranslationCode & 0x0000FFFF, tcLanguageName,
+                _countof(tcLanguageName)))
+            {
+                oem_printf(stdout, "Language: (0x%1!X!) %2!ws!%%n", dwTranslationCode,
+                    tcLanguageName);
+            }
+        }
+        else
+        {
+            dwTranslationCode = 0x04E40409;
+        }
+
+        PrintFileVerRecord(L"CompanyName", L"Company name",
+            dwTranslationCode);
+        PrintFileVerRecord(L"FileDescription", L"File description",
+            dwTranslationCode);
+        PrintFileVerRecord(L"FileVersion", L"File version",
+            dwTranslationCode);
+        PrintFileVerRecord(L"InternalName", L"Internal name",
+            dwTranslationCode);
+        PrintFileVerRecord(L"LegalCopyright", L"Legal copyright",
+            dwTranslationCode);
+        PrintFileVerRecord(L"OriginalFilename", L"Original filename",
+            dwTranslationCode);
+        PrintFileVerRecord(L"ProductName", L"Product name",
+            dwTranslationCode);
+        PrintFileVerRecord(L"ProductVersion", L"Product version",
+            dwTranslationCode);
+
+        return true;
+    }
+
+    DWORD GetLanguageName(LPSTR szLang, DWORD nSize)
     {
         if (!*this)
         {
@@ -388,12 +589,29 @@ public:
         }
 
         LPWORD lpwTranslationCode =
-            (LPWORD)QueryValue(TEXT("\\VarFileInfo\\Translation"));
+            (LPWORD)QueryValue("\\VarFileInfo\\Translation");
 
         if (!lpwTranslationCode)
             return 0;
 
-        return VerLanguageName(*lpwTranslationCode, szLang, nSize);
+        return VerLanguageNameA(*lpwTranslationCode, szLang, nSize);
+    }
+
+    DWORD GetLanguageName(LPWSTR szLang, DWORD nSize)
+    {
+        if (!*this)
+        {
+            SetLastError(ERROR_NO_MORE_ITEMS);
+            return 0;
+        }
+
+        LPWORD lpwTranslationCode =
+            (LPWORD)QueryValue(L"\\VarFileInfo\\Translation");
+
+        if (!lpwTranslationCode)
+            return 0;
+
+        return VerLanguageNameW(*lpwTranslationCode, szLang, nSize);
     }
 };
 #endif // _INC_WFILEVER_
