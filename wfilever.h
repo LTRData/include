@@ -193,7 +193,7 @@ GetModuleVersionInfo(HMODULE hmodule)
         return NULL;
     }
 
-    return GetFixedVersionInfo(hmodule);
+    return GetFixedVersionInfo(resource);
 }
 
 class WFileVerInfo : public WHeapMem<VOID>
