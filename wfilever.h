@@ -30,7 +30,13 @@ LPVOID
 WINAPI
 GetRawFileVersionResource(LPVOID FileData, LPDWORD ResourceSize)
 {
+    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)FileData;
+
     PIMAGE_NT_HEADERS header = ImageNtHeader(FileData);
+
+    LONGLONG offset = (LPBYTE)header - (LPBYTE)dos_header;
+
+    offset;
 
     if (header == NULL || header->Signature != 0x4550 || header->FileHeader.SizeOfOptionalHeader == 0)
     {
@@ -474,7 +480,7 @@ public:
         LPWSTR lpVerBuf = QueryValue(strSubBlock);
         if (lpVerBuf)
         {
-            printf("%ws: %ws\n",
+            oem_printf(stdout, "%1!ws!: %2!ws!%%n",
                 (strRecordDescription ? strRecordDescription :
                 L"File description"), lpVerBuf);
             return true;
