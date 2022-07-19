@@ -3831,10 +3831,22 @@ extern "C"
     NTSYSAPI
         NTSTATUS
         NTAPI
-        LdrLoadDll(IN PWCHAR PathToFile OPTIONAL,
-            IN PULONG Flags OPTIONAL,
-            IN PUNICODE_STRING ModuleFileName,
-            OUT PVOID ModuleHandle OPTIONAL);
+        LdrGetProcedureAddress(
+            IN PVOID DllHandle,
+            IN CONST ANSI_STRING* ProcedureName OPTIONAL,
+            IN ULONG ProcedureNumber OPTIONAL,
+            OUT PVOID* ProcedureAddress
+        );
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        LdrLoadDll(
+            IN PCWSTR DllPath OPTIONAL,
+            IN PULONG DllCharacteristics OPTIONAL,
+            IN PCUNICODE_STRING DllName,
+            OUT PVOID* DllHandle
+        );
 
     // Rtl String Functions 
     NTSYSAPI
