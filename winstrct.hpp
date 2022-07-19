@@ -503,7 +503,7 @@ public:
         return GetSize() / sizeof(T);
     }
 
-    SIZE_T GetSize(DWORD dwFlags = 0) const
+    SIZE_T GetSize() const
     {
         if (ptr == NULL)
         {
@@ -575,7 +575,7 @@ public:
     {
     }
 
-    explicit WNetApiMem(SIZE_T dwAllocSize, DWORD dwFlags = 0)
+    explicit WNetApiMem(SIZE_T dwAllocSize)
     {
         DWORD rc = NetApiBufferAllocate(dwAllocSize, &ptr);
         
@@ -592,6 +592,64 @@ public:
     }
 
     ~WNetApiMem()
+    {
+        Free();
+    }
+};
+
+template<typename T> class WCoTaskMem :public WMemHolder<T>
+{
+public:
+    T* operator =(T* pBlk)
+    {
+        Free();
+        return ptr = pBlk;
+    }
+
+    T* ReAlloc(SIZE_T AllocSize)
+    {
+        if (ptr == NULL)
+        {
+            T* newmem = CoTaskMemRealloc(&ptr, dwAllocSize);
+
+            if (newmem != NULL || dwAllocSize == 0)
+            {
+                ptr = newmem;
+            }
+
+            return newmem;
+        }
+
+        ptr = CoTaskMemAlloc(dwAllocSize);
+
+        return ptr;
+    }
+
+    T* Free()
+    {
+        if ((this == NULL) || (ptr == NULL))
+            return NULL;
+        
+        CoTaskMemFree(ptr);
+        
+        return NULL;
+    }
+
+    WCoTaskMem()
+    {
+    }
+
+    explicit WCoTaskMem(SIZE_T dwAllocSize)
+    {
+        ptr = CoTaskMemAlloc(dwAllocSize);
+    }
+
+    explicit WCoTaskMem(T* pBlk)
+        : WMemHolder<T>(pBlk)
+    {
+    }
+
+    ~WCoTaskMem()
     {
         Free();
     }
