@@ -30,13 +30,7 @@ LPVOID
 WINAPI
 GetRawFileVersionResource(LPVOID FileData, LPDWORD ResourceSize)
 {
-    PIMAGE_DOS_HEADER dos_header = (PIMAGE_DOS_HEADER)FileData;
-
     PIMAGE_NT_HEADERS header = ImageNtHeader(FileData);
-
-    LONGLONG offset = (LPBYTE)header - (LPBYTE)dos_header;
-
-    offset;
 
     if (header == NULL || header->Signature != 0x4550 || header->FileHeader.SizeOfOptionalHeader == 0)
     {
