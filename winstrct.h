@@ -224,7 +224,7 @@ IsHyperV()
     {
         int highest_leaf;
         char vendor[12];
-    } cpuinfo;
+    } cpuinfo = {};
     __cpuid((int*)&cpuinfo, 0x40000000);
     return memcmp(cpuinfo.vendor, MICROSOFT_HV_CPUID, sizeof(cpuinfo.vendor)) == 0;
 }
@@ -733,7 +733,7 @@ EnableBackupPrivileges()
     };
 
     BYTE buf[FIELD_OFFSET(TOKEN_PRIVILEGES, Privileges) +
-        _countof(privileges) * sizeof(LUID_AND_ATTRIBUTES)];
+        _countof(privileges) * sizeof(LUID_AND_ATTRIBUTES)] = {};
 
     PTOKEN_PRIVILEGES tkp = (PTOKEN_PRIVILEGES)buf;
 
