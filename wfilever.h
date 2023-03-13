@@ -294,7 +294,7 @@ public:
         if (!lpSubBlock)
             lpSubBlock = "\\StringFileInfo\\040904E4\\FileDescription";
 
-        LPSTR lpVerBuf;
+        LPSTR lpVerBuf = NULL;
         UINT uiVerBufSiz;
         if (!VerQueryValueA(ptr, lpSubBlock, (LPVOID*)&lpVerBuf,
             &uiVerBufSiz))
@@ -318,7 +318,7 @@ public:
         if (!lpSubBlock)
             lpSubBlock = L"\\StringFileInfo\\040904E4\\FileDescription";
 
-        LPWSTR lpVerBuf;
+        LPWSTR lpVerBuf = NULL;
         UINT uiVerBufSiz;
         if (!VerQueryValueW(ptr, lpSubBlock, (LPVOID*)&lpVerBuf,
             &uiVerBufSiz))
@@ -397,7 +397,7 @@ public:
         return QueryValue(strSubBlock);
     }
 
-    bool PrintFileVerRecord(LPSTR strRecordName = NULL,
+    bool PrintFileVerRecord(LPCSTR strRecordName = NULL,
         LPCSTR strRecordDescription = NULL,
         DWORD dwTranslationCode = (DWORD)-1) const
     {
@@ -441,7 +441,7 @@ public:
             return false;
     }
 
-    bool PrintFileVerRecord(LPWSTR strRecordName = NULL,
+    bool PrintFileVerRecord(LPCWSTR strRecordName = NULL,
         LPCWSTR strRecordDescription = NULL,
         DWORD dwTranslationCode = (DWORD)-1) const
     {

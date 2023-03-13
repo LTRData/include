@@ -198,7 +198,7 @@ public:
 
     T* operator =(T *pBlk)
     {
-        Free();
+        this->Free();
         return ptr = pBlk;
     }
 
@@ -275,7 +275,7 @@ public:
     T* operator =(T *pBlk)
     {
         Free();
-        return ptr = pBlk;
+        return this->ptr = pBlk;
     }
 
     DWORD_PTR Count() const
@@ -285,10 +285,10 @@ public:
 
     DWORD_PTR GetSize() const
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
             return 0;
         else
-            return LocalSize(ptr);
+            return LocalSize(this->ptr);
     }
 
     /* WMem::ReAlloc()
@@ -299,18 +299,18 @@ public:
     T* ReAlloc(DWORD dwAllocSize)
     {
         T* newblock;
-        if (ptr == NULL)
+        if (this->ptr == NULL)
         {
             newblock = (T*)LocalAlloc(LMEM_ZEROINIT, dwAllocSize);
         }
         else
         {
-            newblock = (T*)LocalReAlloc(ptr, dwAllocSize, LMEM_ZEROINIT);
+            newblock = (T*)LocalReAlloc(this->ptr, dwAllocSize, LMEM_ZEROINIT);
         }
 
         if (newblock != NULL)
         {
-            return ptr = newblock;
+            return this->ptr = newblock;
         }
         else
         {
@@ -320,10 +320,10 @@ public:
 
     T* Free()
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
             return NULL;
         else
-            return ptr = (T*)LocalFree(ptr);
+            return this->ptr = (T*)LocalFree(this->ptr);
     }
 
     WMem()
@@ -353,7 +353,7 @@ public:
     T* operator =(T *pBlk)
     {
         Free();
-        return ptr = pBlk;
+        return this->ptr = pBlk;
     }
 
     size_t Count() const
@@ -363,10 +363,10 @@ public:
 
     size_t GetSize() const
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
             return 0;
         else
-            return _msize(ptr);
+            return _msize(this->ptr);
     }
 
     /* WHeapMem::ReAlloc()
@@ -376,19 +376,19 @@ public:
     */
     T* ReAlloc(size_t dwAllocSize)
     {
-        T *newblock = (T*)realloc(ptr, dwAllocSize);
+        T *newblock = (T*)realloc(this->ptr, dwAllocSize);
         if (newblock != NULL)
-            return ptr = newblock;
+            return this->ptr = newblock;
         else
             return NULL;
     }
 
     void Free()
     {
-        if (ptr != NULL)
+        if (this->ptr != NULL)
         {
-            free(ptr);
-            ptr = NULL;
+            free(this->ptr);
+            this->ptr = NULL;
         }
     }
 
@@ -415,7 +415,7 @@ public:
     T* operator =(T *pBlk)
     {
         Free();
-        return ptr = pBlk;
+        return this->ptr = pBlk;
     }
 
     SIZE_T Count() const
@@ -425,10 +425,10 @@ public:
 
     SIZE_T GetSize(DWORD dwFlags = 0) const
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
             return 0;
         else
-            return HeapSize(GetProcessHeap(), dwFlags, ptr);
+            return HeapSize(GetProcessHeap(), dwFlags, this->ptr);
     }
 
     /* WHeapMem::ReAlloc()
@@ -438,17 +438,17 @@ public:
     */
     T* ReAlloc(SIZE_T AllocSize, DWORD dwFlags = 0)
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
         {
-            ptr = (T*)HeapAlloc(GetProcessHeap(), dwFlags, AllocSize);
-            return ptr;
+            this->ptr = (T*)HeapAlloc(GetProcessHeap(), dwFlags, AllocSize);
+            return this->ptr;
         }
 
-        T* newblock = (T*)HeapReAlloc(GetProcessHeap(), dwFlags, ptr, AllocSize);
+        T* newblock = (T*)HeapReAlloc(GetProcessHeap(), dwFlags, this->ptr, AllocSize);
 
         if (newblock != NULL)
         {
-            return ptr = newblock;
+            return this->ptr = newblock;
         }
         else
         {
@@ -458,15 +458,15 @@ public:
 
     T *Free(DWORD dwFlags = 0)
     {
-        if ((this == NULL) || (ptr == NULL))
+        if ((this == NULL) || (this->ptr == NULL))
             return NULL;
-        else if (HeapFree(GetProcessHeap(), dwFlags, ptr))
-            return ptr = NULL;
+        else if (HeapFree(GetProcessHeap(), dwFlags, this->ptr))
+            return this->ptr = NULL;
         else
 #if _MSC_VER >= 1500
 #pragma warning(suppress: 6001)
 #endif
-            return ptr;
+            return this->ptr;
     }
 
     WHeapMem()
@@ -489,13 +489,15 @@ public:
     }
 };
 
+#ifdef NETERR_INCLUDED
+
 template<typename T> class WNetApiMem :public WMemHolder<T>
 {
 public:
     T* operator =(T* pBlk)
     {
         Free();
-        return ptr = pBlk;
+        return this->ptr = pBlk;
     }
 
     SIZE_T Count() const
@@ -505,14 +507,14 @@ public:
 
     SIZE_T GetSize() const
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
         {
             return 0;
         }
 
         DWORD dwAllocSize;
 
-        DWORD rc = NetApiBufferSize(ptr, &dwAllocSize);
+        DWORD rc = NetApiBufferSize(this->ptr, &dwAllocSize);
 
         if (rc == NERR_Success)
         {
@@ -530,26 +532,26 @@ public:
     */
     T* ReAlloc(SIZE_T AllocSize, DWORD dwFlags = 0)
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
         {
-            DWORD rc = NetApiBufferAllocate(dwAllocSize, &ptr);
+            DWORD rc = NetApiBufferAllocate(this->dwAllocSize, &this->ptr);
 
             if (rc != NERR_Success)
             {
-                ptr = NULL;
+                this->ptr = NULL;
                 SetLastError(rc);
             }
 
-            return ptr;
+            return this->ptr;
         }
 
         T* newblock;
 
-        DWORD rc = NetApiBufferReallocate(ptr, AllocSize, &newblock);
+        DWORD rc = NetApiBufferReallocate(this->ptr, AllocSize, &newblock);
 
         if (rc == NERR_Success)
         {
-            return ptr = newblock;
+            return this->ptr = newblock;
         }
         else
         {
@@ -560,15 +562,15 @@ public:
 
     T* Free()
     {
-        if ((this == NULL) || (ptr == NULL))
+        if ((this == NULL) || (this->ptr == NULL))
             return NULL;
-        else if (NetApiBufferFree(ptr))
-            return ptr = NULL;
+        else if (NetApiBufferFree(this->ptr))
+            return this->ptr = NULL;
         else
 #if _MSC_VER >= 1500
 #pragma warning(suppress: 6001)
 #endif
-            return ptr;
+            return this->ptr;
     }
 
     WNetApiMem()
@@ -577,11 +579,11 @@ public:
 
     explicit WNetApiMem(SIZE_T dwAllocSize)
     {
-        DWORD rc = NetApiBufferAllocate(dwAllocSize, &ptr);
+        DWORD rc = NetApiBufferAllocate(dwAllocSize, &this->ptr);
         
         if (rc != NERR_Success)
         {
-            ptr = NULL;
+            this->ptr = NULL;
             SetLastError(rc);
         }
     }
@@ -597,40 +599,42 @@ public:
     }
 };
 
+#endif
+
 template<typename T> class WCoTaskMem :public WMemHolder<T>
 {
 public:
     T* operator =(T* pBlk)
     {
         Free();
-        return ptr = pBlk;
+        return this->ptr = pBlk;
     }
 
     T* ReAlloc(SIZE_T AllocSize)
     {
-        if (ptr == NULL)
+        if (this->ptr == NULL)
         {
-            T* newmem = CoTaskMemRealloc(&ptr, dwAllocSize);
+            T* newmem = CoTaskMemRealloc(&this->ptr, this->dwAllocSize);
 
-            if (newmem != NULL || dwAllocSize == 0)
+            if (newmem != NULL || this->dwAllocSize == 0)
             {
-                ptr = newmem;
+                this->ptr = newmem;
             }
 
             return newmem;
         }
 
-        ptr = CoTaskMemAlloc(dwAllocSize);
+        this->ptr = CoTaskMemAlloc(this->dwAllocSize);
 
-        return ptr;
+        return this->ptr;
     }
 
     T* Free()
     {
-        if ((this == NULL) || (ptr == NULL))
+        if ((this == NULL) || (this->ptr == NULL))
             return NULL;
         
-        CoTaskMemFree(ptr);
+        CoTaskMemFree(this->ptr);
         
         return NULL;
     }
@@ -641,7 +645,7 @@ public:
 
     explicit WCoTaskMem(SIZE_T dwAllocSize)
     {
-        ptr = CoTaskMemAlloc(dwAllocSize);
+        this->ptr = CoTaskMemAlloc(this->dwAllocSize);
     }
 
     explicit WCoTaskMem(T* pBlk)
@@ -679,7 +683,7 @@ public:
     {
         for (size_t i = 0; i < count; i++)
         {
-            ptr[i].Free();
+            this->ptr[i].Free();
         }
 
         count = 0;
@@ -689,12 +693,12 @@ public:
     {
         size_t i = count;
 
-        if (i >= Count())
+        if (i >= this->Count())
         {
             ReAlloc((i + 1) * sizeof(T*), HEAP_GENERATE_EXCEPTIONS | HEAP_ZERO_MEMORY);
         }
 
-        ptr[i] = item;
+        this->ptr[i] = item;
 
         count = i + 1;
 

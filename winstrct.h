@@ -230,6 +230,14 @@ IsHyperV()
 }
 #else
 #pragma intrinsic(memcmp, memcpy, memset, strcat, strcmp, strcpy, strlen)
+
+__forceinline BOOL
+IsHyperV()
+{
+    // Obviously not correct, but for now, just to make ported code compile.
+    // Might find a way to detect this on ARM CPU etc in the future.
+    return TRUE;
+}
 #endif
 
 __forceinline size_t
