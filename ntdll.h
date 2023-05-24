@@ -180,6 +180,10 @@ extern "C"
 #define FILE_VALID_MAILSLOT_OPTION_FLAGS 0x00000032
 #define FILE_VALID_SET_FLAGS 0x00000036
 
+#ifndef FILE_DEVICE_CONSOLE
+#define FILE_DEVICE_CONSOLE             0x00000050
+#endif
+
     // THREAD STATES 
 #define THREAD_STATE_INITIALIZED 0
 #define THREAD_STATE_READY 1
@@ -2877,6 +2881,29 @@ extern "C"
         WCHAR FileName[1];
     } FILE_RENAME_INFORMATION, *PFILE_RENAME_INFORMATION;
 
+    typedef struct _FILE_PIPE_INFORMATION {
+        ULONG ReadMode;
+        ULONG CompletionMode;
+    } FILE_PIPE_INFORMATION, *PFILE_PIPE_INFORMATION;
+
+    typedef struct _FILE_PIPE_LOCAL_INFORMATION {
+        ULONG NamedPipeType;
+        ULONG NamedPipeConfiguration;
+        ULONG MaximumInstances;
+        ULONG CurrentInstances;
+        ULONG InboundQuota;
+        ULONG ReadDataAvailable;
+        ULONG OutboundQuota;
+        ULONG WriteQuotaAvailable;
+        ULONG NamedPipeState;
+        ULONG NamedPipeEnd;
+    } FILE_PIPE_LOCAL_INFORMATION, *PFILE_PIPE_LOCAL_INFORMATION;
+
+    typedef struct _FILE_PIPE_REMOTE_INFORMATION {
+        LARGE_INTEGER CollectDataTime;
+        ULONG MaximumCollectionCount;
+    } FILE_PIPE_REMOTE_INFORMATION, *PFILE_PIPE_REMOTE_INFORMATION;
+
     typedef struct _FILE_LINK_INFORMATION
     {
         BOOLEAN ReplaceIfExists;
@@ -3726,6 +3753,8 @@ extern "C"
             OUT PHANDLE TargetHandle OPTIONAL,
             IN ACCESS_MASK DesiredAccess,
             IN ULONG HandleAttributes, IN ULONG Options);
+
+#define DUPLICATE_SAME_ATTRIBUTES   0x00000004
 
     NTSYSAPI
         NTSTATUS
