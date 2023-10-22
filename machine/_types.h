@@ -39,6 +39,8 @@
 #ifndef _MACHINE__TYPES_H_
 #define	_MACHINE__TYPES_H_
 
+#define __signed signed
+
 /*
  * Basic types upon which most other types are built.
  */

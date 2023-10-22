@@ -19,7 +19,9 @@ LineRecv(HANDLE h, LPSTR pBuf, DWORD dwBufSiz, DWORD dwTimeout = INFINITE);
 EXTERN_C DWORD
 LineRecvW(HANDLE h, LPWSTR pBuf, DWORD dwBufChrs, DWORD dwTimeout = INFINITE);
 EXTERN_C DWORD
-ReadPassword(HANDLE h, LPSTR pBuf, DWORD dwBufSiz);
+ReadPasswordA(HANDLE h, LPSTR pBuf, DWORD dwBufSiz);
+EXTERN_C DWORD
+ReadPasswordW(HANDLE h, LPWSTR pBuf, DWORD dwBufSiz);
 EXTERN_C DWORD
 BufRecv(HANDLE h, PVOID pBuf, DWORD dwBufSize, DWORD dwTimeout = INFINITE);
 EXTERN_C BOOL

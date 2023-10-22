@@ -11,6 +11,9 @@
 #ifndef _In_
 #define _In_
 #endif
+#ifndef _In_z_
+#define _In_z_
+#endif
 #ifndef _In_opt_
 #define _In_opt_
 #endif
@@ -35,7 +38,7 @@
 #pragma warning(disable : 4214)
 #pragma warning(disable : 4201)
 
-//#define WIN32_NO_STATUS
+#ifndef WIN32_NO_STATUS
 
 #undef STATUS_WAIT_0
 #undef STATUS_ABANDONED_WAIT_0
@@ -98,6 +101,8 @@
 #undef DBG_REPLY_LATER
 #undef DBG_PRINTEXCEPTION_WIDE_C
 #undef STATUS_ENCLAVE_VIOLATION
+
+#endif
 
 #include <ntstatus.h>
 
@@ -4259,6 +4264,34 @@ extern "C"
             __in_z __drv_formatString(printf) PCSTR Format,
             ...
         );
+
+#ifdef _VA_LIST_DEFINED
+
+#if (NTDDI_VERSION >= NTDDI_WINXP)
+    NTSYSAPI
+        ULONG
+        NTAPI
+        vDbgPrintEx(
+            _In_ ULONG ComponentId,
+            _In_ ULONG Level,
+            _In_z_ PCCH Format,
+            _In_ va_list arglist
+        );
+
+    NTSYSAPI
+        ULONG
+        NTAPI
+        vDbgPrintExWithPrefix(
+            _In_z_ PCCH Prefix,
+            _In_ ULONG ComponentId,
+            _In_ ULONG Level,
+            _In_z_ PCCH Format,
+            _In_ va_list arglist
+        );
+
+#endif
+
+#endif // _VA_LIST_DEFINED
 
     NTSYSAPI
         NTSTATUS

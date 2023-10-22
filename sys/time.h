@@ -1,5 +1,5 @@
-#include < time.h >
-#include < windows.h >
+#include <time.h>
+#include <windows.h>
 
 #if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
   #define DELTA_EPOCH_IN_MICROSECS  11644473600000000Ui64
@@ -13,6 +13,7 @@ struct timezone
   int  tz_dsttime;     /* type of dst correction */
 };
 
+__forceinline
 int gettimeofday(struct timeval *tv, struct timezone *tz)
 {
   FILETIME ft;
@@ -47,15 +48,3 @@ int gettimeofday(struct timeval *tv, struct timezone *tz)
 
   return 0;
 }
-
-#define TEST
-#ifdef TEST
-int main()
-{
-  struct timeval now; 
-  struct timezone tzone;
-
-  gettimeofday(&now, NULL);
-  gettimeofday(&now, &tzone);
-}
-#endif
