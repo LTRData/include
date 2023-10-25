@@ -72,22 +72,49 @@ int pwrite(int d, const void* buf, int nbytes, __int64 offset)
 
     fprintf(stderr, "Extending file to %I64u bytes.\n", offset + nbytes);
 
-#if 1
+#if defined(_M_IX86)
+    {
+        HANDLE h = (HANDLE)_get_osfhandle(d);
+        LARGE_INTEGER eof;
+        eof.QuadPart = offset + nbytes;
+
+        if (SetFilePointer(h, eof.LowPart, &eof.HighPart, FILE_BEGIN) ==
+            INVALID_SET_FILE_POINTER &&
+            GetLastError() != NO_ERROR)
+        {
+            errno = 28;
+            return -1;
+        }
+
+        if (!SetEndOfFile(h))
+        {
+            errno = 28;
+            return -1;
+        }
+    }
+#elif defined(_M_X64)
+    {
+        HANDLE h = (HANDLE)_get_osfhandle(d);
+        LARGE_INTEGER eof;
+        eof.QuadPart = offset + nbytes;
+
+        if (!SetFilePointerEx(h, eof, NULL, FILE_BEGIN))
+        {
+            errno = 28;
+            return -1;
+        }
+
+        if (!SetEndOfFile(h))
+        {
+            errno = 28;
+            return -1;
+        }
+    }
+#else
     errno = _chsize_s(d, offset + nbytes);
 
     if (errno != 0)
     {
-        return -1;
-    }
-#else
-    if (_lseeki64(d, offset + nbytes, SEEK_SET) != (offset + nbytes))
-    {
-        return -1;
-    }
-
-    if (!SetEndOfFile((HANDLE)_get_osfhandle(d)))
-    {
-        errno = 28;
         return -1;
     }
 #endif
