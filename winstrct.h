@@ -168,8 +168,18 @@ typedef struct _REPARSE_DATA
 
 #define TO_h(n) ((n)>=_1TB ? TO_TB(n) : (n)>=_1GB ? TO_GB(n) :	\
 	        (n)>=_1MB ? TO_MB(n) : (n)>=_1KB ? TO_KB(n) : (n))
-#define TO_p(n) ((n)>=_1TB ? "TB" : (n)>=_1GB ? "GB" :			\
+
+#define TO_pA(n) ((n)>=_1TB ? "TB" : (n)>=_1GB ? "GB" :			\
 	        (n)>=_1MB ? "MB" : (n)>=_1KB ? "KB": (n)==1 ? "byte" : "bytes")
+
+#define TO_pW(n) ((n)>=_1TB ? L"TB" : (n)>=_1GB ? L"GB" :			\
+	        (n)>=_1MB ? L"MB" : (n)>=_1KB ? L"KB": (n)==1 ? L"byte" : L"bytes")
+
+#ifdef UNICODE
+#define TO_p(n) TO_pW(n)
+#else
+#define TO_p(n) TO_pA(n)
+#endif
 
 /// Prototype for rundll32.exe callable functions.
 typedef void WINAPI
