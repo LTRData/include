@@ -447,6 +447,11 @@ extern "C" {
         {
             oem_printf_line_length =
                 con_info.srWindow.Right - con_info.srWindow.Left - 2;
+
+            if (oem_printf_line_length > 250)
+            {
+                oem_printf_line_length = 250;
+            }
         }
         else
         {
