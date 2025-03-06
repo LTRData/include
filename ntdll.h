@@ -4072,13 +4072,178 @@ extern "C"
             OUT PWSTR * DosFilePath OPTIONAL,
             OUT PUNICODE_STRING NtFilePath OPTIONAL);
 
-    NTSYSAPI
-        NTSTATUS
+    //
+    // preallocated heap-growable buffers
+    //
+    struct _RTL_BUFFER;
+
+#if !defined(RTL_BUFFER)
+
+    // This is duplicated in ntldr.h.
+
+#define RTL_BUFFER RTL_BUFFER
+
+    typedef struct _RTL_BUFFER {
+        PUCHAR    Buffer;
+        PUCHAR    StaticBuffer;
+        SIZE_T    Size;
+        SIZE_T    StaticSize;
+        SIZE_T    ReservedForAllocatedSize; // for future doubling
+        PVOID     ReservedForIMalloc; // for future pluggable growth
+    } RTL_BUFFER, * PRTL_BUFFER;
+
+#endif
+
+#define RTLP_BUFFER_IS_HEAP_ALLOCATED(b) ((b)->Buffer != (b)->StaticBuffer)
+
+    //
+    // a preallocated buffer that is "tied" to a UNICODE_STRING
+    //
+    struct _RTL_UNICODE_STRING_BUFFER;
+
+    typedef struct _RTL_UNICODE_STRING_BUFFER {
+        UNICODE_STRING String;
+        RTL_BUFFER     ByteBuffer;
+        UCHAR          MinimumStaticBufferForTerminalNul[sizeof(WCHAR)];
+    } RTL_UNICODE_STRING_BUFFER, * PRTL_UNICODE_STRING_BUFFER;
+
+    //
+    // These work for both UNICODE_STRING and STRING.
+    // That's why "plain" 0 and sizeof(Buffer[0]) is used.
+    //
+
+    typedef USHORT RTL_STRING_LENGTH_TYPE;
+
+    // odd but correct use of RTL_STRING_IS_PUT_AT_SAFE instead of RTL_STRING_IS_GET_AT_SAFE,
+    // we are reaching past the Length
+#define RTL_STRING_IS_NUL_TERMINATED(s)    (RTL_STRING_IS_PUT_AT_SAFE(s, RTL_STRING_GET_LENGTH_CHARS(s), 0) \
+                                           && RTL_STRING_GET_AT_UNSAFE(s, RTL_STRING_GET_LENGTH_CHARS(s)) == 0)
+
+#define RTL_STRING_NUL_TERMINATE(s)        ((VOID)(ASSERT(RTL_STRING_IS_PUT_AT_SAFE(s, RTL_STRING_GET_LENGTH_CHARS(s), 0)), \
+                                           ((s)->Buffer[RTL_STRING_GET_LENGTH_CHARS(s)] = 0)))
+
+#define RTL_NUL_TERMINATE_STRING(s)        (RTL_STRING_NUL_TERMINATE(s)) /* compatibility */
+
+#define RTL_STRING_MAKE_LENGTH_INCLUDE_TERMINAL_NUL(s) ((VOID)(ASSERT(RTL_STRING_IS_NUL_TERMINATED(s)), \
+                                                       ((s)->Length += sizeof((s)->Buffer[0]))))
+
+#define RTL_STRING_IS_EMPTY(s)             ((s)->Length == 0)
+
+#define RTL_STRING_GET_LAST_CHAR(s)        (RTL_STRING_GET_AT((s), RTL_STRING_GET_LENGTH_CHARS(s) - 1))
+
+#define RTL_STRING_GET_LENGTH_CHARS(s)     ((s)->Length / sizeof((s)->Buffer[0]))
+#define RTL_STRING_GET_MAX_LENGTH_CHARS(s) ((s)->MaximumLength / sizeof((s)->Buffer[0]))
+#define RTL_STRING_GET_LENGTH_BYTES(s)     ((s)->Length)
+
+#define RTL_STRING_SET_LENGTH_CHARS_UNSAFE(s,n) ((s)->Length = (RTL_STRING_LENGTH_TYPE)(((n) * sizeof(s)->Buffer[0])))
+
+#define RtlEnsureBufferSize(Flags, Buff, NewSizeBytes) \
+    (   ((Buff) != NULL && (NewSizeBytes) <= (Buff)->Size) \
+        ? STATUS_SUCCESS \
+        : RtlpEnsureBufferSize((Flags), (Buff), (NewSizeBytes)) \
+    )
+
+#define RtlAppendUnicodeStringBuffer(Dest, Source)                            \
+    ( ( ( (Dest)->String.Length + (Source)->Length + sizeof((Dest)->String.Buffer[0]) ) > UNICODE_STRING_MAX_BYTES ) \
+        ? STATUS_NAME_TOO_LONG                                                \
+        : (!NT_SUCCESS(                                                       \
+                RtlEnsureBufferSize(                                          \
+                    0,                                                        \
+                    &(Dest)->ByteBuffer,                                          \
+                    (Dest)->String.Length + (Source)->Length + sizeof((Dest)->String.Buffer[0]) ) ) \
+                ? STATUS_NO_MEMORY                                            \
+                : ( ( (Dest)->String.Buffer = (PWSTR)(Dest)->ByteBuffer.Buffer ), \
+                    ( RtlMoveMemory(                                          \
+                        (Dest)->String.Buffer + (Dest)->String.Length / sizeof((Dest)->String.Buffer[0]), \
+                        (Source)->Buffer,                                     \
+                        (Source)->Length) ),                                  \
+                    ( (Dest)->String.MaximumLength = (RTL_STRING_LENGTH_TYPE)((Dest)->String.Length + (Source)->Length + sizeof((Dest)->String.Buffer[0]))), \
+                    ( (Dest)->String.Length = (USHORT) ((Dest)->String.Length + (Source)->Length )),            \
+                    ( (Dest)->String.Buffer[(Dest)->String.Length / sizeof((Dest)->String.Buffer[0])] = 0 ), \
+                    ( STATUS_SUCCESS ) ) ) )
+
+#define RtlAssignUnicodeStringBuffer(Buff, Str) \
+    (((Buff)->String.Length = 0), (RtlAppendUnicodeStringBuffer((Buff), (Str))))
+
+#define RtlInitBuffer(Buff, StatBuff, StatSize) \
+    do {                                        \
+        (Buff)->Buffer       = (StatBuff);      \
+        (Buff)->Size         = (StatSize);      \
+        (Buff)->StaticBuffer = (StatBuff);      \
+        (Buff)->StaticSize   = (StatSize);      \
+    } while (0)
+
+#define RTL_ENSURE_BUFFER_SIZE_NO_COPY (0x00000001)
+
+    NTSTATUS
         NTAPI
-        RtlNtPathNameToDosPathName(IN ULONG Flags,
-            IN OUT PUNICODE_STRING Path,
-            OUT PULONG PathNameType OPTIONAL,
-            IN OUT PWSTR NtFilePartOffset OPTIONAL);
+        RtlpEnsureBufferSize(
+            IN ULONG           Flags,
+            IN OUT PRTL_BUFFER Buffer,
+            IN SIZE_T          NewSizeBytes
+        );
+
+#define RtlFreeBuffer(Buff)                              \
+    do {                                                 \
+        if ((Buff) != NULL && (Buff)->Buffer != NULL) {  \
+            if (RTLP_BUFFER_IS_HEAP_ALLOCATED(Buff)) {   \
+                UNICODE_STRING UnicodeString;            \
+                UnicodeString.Buffer = (PWSTR)(PVOID)(Buff)->Buffer; \
+                RtlFreeUnicodeString(&UnicodeString);    \
+            }                                            \
+            (Buff)->Buffer = (Buff)->StaticBuffer;       \
+            (Buff)->Size = (Buff)->StaticSize;           \
+        }                                                \
+    } while (0)
+
+#define RtlInitUnicodeStringBuffer(Buff, StatBuff, StatSize)      \
+    do {                                                          \
+        SIZE_T TempStaticSize = (StatSize);                       \
+        PUCHAR TempStaticBuff = (StatBuff);                       \
+        TempStaticSize &= ~(sizeof((Buff)->String.Buffer[0]) - 1);  \
+        if (TempStaticSize > UNICODE_STRING_MAX_BYTES) {          \
+            TempStaticSize = UNICODE_STRING_MAX_BYTES;            \
+        }                                                         \
+        if (TempStaticSize < sizeof(WCHAR)) {                     \
+            TempStaticBuff = (Buff)->MinimumStaticBufferForTerminalNul; \
+            TempStaticSize = sizeof(WCHAR);                       \
+        }                                                         \
+        RtlInitBuffer(&(Buff)->ByteBuffer, TempStaticBuff, TempStaticSize); \
+        (Buff)->String.Buffer = (WCHAR*)TempStaticBuff;           \
+        if ((Buff)->String.Buffer != NULL)                        \
+            (Buff)->String.Buffer[0] = 0;                         \
+        (Buff)->String.Length = 0;                                \
+        (Buff)->String.MaximumLength = (RTL_STRING_LENGTH_TYPE)TempStaticSize;    \
+    } while (0)
+
+#define RtlFreeUnicodeStringBuffer(Buff)      \
+    do {                                      \
+        if ((Buff) != NULL) {                 \
+            RtlFreeBuffer(&(Buff)->ByteBuffer);   \
+            (Buff)->String.Buffer = (PWSTR)(Buff)->ByteBuffer.StaticBuffer; \
+            if ((Buff)->String.Buffer != NULL) \
+                (Buff)->String.Buffer[0] = 0;  \
+            (Buff)->String.Length = 0;         \
+            (Buff)->String.MaximumLength = (RTL_STRING_LENGTH_TYPE)(Buff)->ByteBuffer.StaticSize; \
+        } \
+    } while (0)
+
+    //
+    // These are OUT Disposition values.
+    //
+#define RTL_NT_PATH_NAME_TO_DOS_PATH_NAME_AMBIGUOUS   (0x00000001)
+#define RTL_NT_PATH_NAME_TO_DOS_PATH_NAME_UNC         (0x00000002)
+#define RTL_NT_PATH_NAME_TO_DOS_PATH_NAME_DRIVE       (0x00000003)
+#define RTL_NT_PATH_NAME_TO_DOS_PATH_NAME_ALREADY_DOS (0x00000004)
+
+    NTSTATUS
+        NTAPI
+        RtlNtPathNameToDosPathName(
+            IN     ULONG                      Flags,
+            IN OUT PRTL_UNICODE_STRING_BUFFER Path,
+            OUT    ULONG* Disposition OPTIONAL,
+            IN OUT PWSTR* FilePart OPTIONAL
+        );
 
     // Rtl Large Integer Operations 
 

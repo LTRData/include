@@ -147,12 +147,13 @@ typedef struct _REPARSE_DATA
             WORD NameLength;
             WORD DisplayNameOffset;
             WORD DisplayNameLength;
-            WORD ReservedOffset;
-            WORD ReservedLength;
+            DWORD Flags;
             BYTE Data[1];
         } SymLink;
     };
 } REPARSE_DATA, *PREPARSE_DATA;
+
+#define SYMLINK_FLAG_RELATIVE 0x00000001
 
 /// Macros for "human readable" sizes in bytes
 #define _1KB  (1ui64<<10)
