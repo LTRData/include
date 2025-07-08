@@ -221,6 +221,29 @@ htonll()
 }
 #endif
 
+__forceinline BOOL
+RegistryStringContains(HKEY root, LPCWSTR subkey, LPCWSTR valueName, LPCWSTR keyword)
+{
+    HKEY hKey;
+    if (RegOpenKeyExW(root, subkey, 0, KEY_READ, &hKey) != ERROR_SUCCESS)
+        return false;
+
+    wchar_t buffer[512] = L"";
+    DWORD bufferSize = sizeof(buffer);
+    DWORD type = 0;
+
+    bool found = false;
+    if (RegQueryValueExW(hKey, valueName, NULL, &type, (LPBYTE)buffer, &bufferSize) == ERROR_SUCCESS &&
+        type == REG_SZ)
+    {
+        if (wcsstr(buffer, keyword))
+            found = true;
+    }
+
+    RegCloseKey(hKey);
+    return found;
+}
+
 #if (_MSC_VER >= 1400) && (defined(_M_IX86) || defined(_M_AMD64))
 EXTERN_C void __cpuid(int a[4], int b);
 
@@ -245,9 +268,13 @@ IsHyperV()
 __forceinline BOOL
 IsHyperV()
 {
-    // Obviously not correct, but for now, just to make ported code compile.
-    // Might find a way to detect this on ARM CPU etc in the future.
-    return TRUE;
+    // Common Hyper-V clues
+    return
+        RegistryStringContains(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemBiosVersion", L"Hyper-V") ||
+        RegistryStringContains(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"VideoBiosVersion", L"Hyper-V") ||
+        RegistryStringContains(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemManufacturer", L"Microsoft") ||
+        RegistryStringContains(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", L"Virtual") ||
+        RegistryStringContains(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", L"Hyper-V");
 }
 #endif
 
