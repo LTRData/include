@@ -243,7 +243,7 @@ FindWStringInMemory(LPCVOID memory_block, SIZE_T byte_size, LPCWSTR search_strin
     return NULL; // not found
 }
 
-#if 0 // (_MSC_VER >= 1400) && (defined(_M_IX86) || defined(_M_AMD64))
+#if (_MSC_VER >= 1400) && (defined(_M_IX86) || defined(_M_AMD64))
 EXTERN_C void __cpuid(int a[4], int b);
 
 #pragma intrinsic(__cpuid, memcmp, memcpy, memset, strcat, strcmp, strcpy, strlen)
@@ -264,6 +264,7 @@ IsHyperV()
 #else
 #pragma intrinsic(memcmp, memcpy, memset, strcat, strcmp, strcpy, strlen)
 
+#ifdef RegGetValue
 __forceinline BOOL
 IsHyperV()
 {
@@ -278,6 +279,7 @@ IsHyperV()
         (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Virtual") != NULL) ||
         (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL);
 }
+#endif
 #endif
 
 __forceinline size_t
