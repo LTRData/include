@@ -221,6 +221,8 @@ htonll()
 }
 #endif
 
+#if defined(_INC_WCHAR) && defined(_CRT_FUNCTIONS_REQUIRED) && _MSC_VER >= 1400
+
 // Returns pointer to first match of search_string in memory_block, or NULL if not found
 __forceinline LPCWSTR
 FindWStringInMemory(LPCVOID memory_block, SIZE_T byte_size, LPCWSTR search_string)
@@ -228,11 +230,12 @@ FindWStringInMemory(LPCVOID memory_block, SIZE_T byte_size, LPCWSTR search_strin
     LPCWSTR block = (LPCWSTR)memory_block;
     SIZE_T block_length = byte_size / sizeof(wchar_t);
     SIZE_T search_length = wcslen(search_string); // length of search string in wchar_t
+    SIZE_T i = 0;
 
     if (search_length == 0 || search_length > block_length)
         return NULL;
 
-    for (SIZE_T i = 0; i <= block_length - search_length; ++i)
+    for (i = 0; i <= block_length - search_length; ++i)
     {
         if (wmemcmp(&block[i], search_string, search_length) == 0)
         {
@@ -242,6 +245,8 @@ FindWStringInMemory(LPCVOID memory_block, SIZE_T byte_size, LPCWSTR search_strin
 
     return NULL; // not found
 }
+
+#endif // _INC_WCHAR
 
 #if (_MSC_VER >= 1400) && (defined(_M_IX86) || defined(_M_AMD64))
 EXTERN_C void __cpuid(int a[4], int b);
@@ -264,7 +269,7 @@ IsHyperV()
 #else
 #pragma intrinsic(memcmp, memcpy, memset, strcat, strcmp, strcpy, strlen)
 
-#ifdef RegGetValue
+#if (_MSC_VER >= 1400) && defined(_INC_WCHAR) && defined(_CRT_FUNCTIONS_REQUIRED) && defined(RegGetValue)
 __forceinline BOOL
 IsHyperV()
 {
@@ -273,11 +278,11 @@ IsHyperV()
 
     // Common Hyper-V clues
     return
-        (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemBiosVersion", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL) ||
-        (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"VideoBiosVersion", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL) ||
-        (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemManufacturer", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Microsoft") != NULL) ||
-        (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Virtual") != NULL) ||
-        (RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", RRF_RT_ANY, NULL, buffer, &(bufferSize = sizeof(buffer))) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL);
+        ((bufferSize = sizeof(buffer)), RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemBiosVersion", RRF_RT_ANY, NULL, buffer, &bufferSize) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL) ||
+        ((bufferSize = sizeof(buffer)), RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"VideoBiosVersion", RRF_RT_ANY, NULL, buffer, &bufferSize) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL) ||
+        ((bufferSize = sizeof(buffer)), RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemManufacturer", RRF_RT_ANY, NULL, buffer, &bufferSize) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Microsoft") != NULL) ||
+        ((bufferSize = sizeof(buffer)), RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", RRF_RT_ANY, NULL, buffer, &bufferSize) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Virtual") != NULL) ||
+        ((bufferSize = sizeof(buffer)), RegGetValue(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System", L"SystemProductName", RRF_RT_ANY, NULL, buffer, &bufferSize) == NO_ERROR && FindWStringInMemory(buffer, bufferSize, L"Hyper-V") != NULL);
 }
 #endif
 #endif
