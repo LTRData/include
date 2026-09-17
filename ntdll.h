@@ -3666,6 +3666,26 @@ extern "C"
         NTAPI
         NtExtendSection(IN HANDLE SectionHandle, IN PLARGE_INTEGER SectionSize);
 
+    typedef enum _SECTION_INHERIT {
+        ViewShare = 1,
+        ViewUnmap = 2
+    } SECTION_INHERIT;
+
+    NTSYSAPI
+        NTSTATUS
+        NTAPI
+        NtMapViewOfSection(
+        IN                  HANDLE          SectionHandle,
+        IN                  HANDLE          ProcessHandle,
+        IN OUT              PVOID* BaseAddress,
+        IN                  ULONG_PTR       ZeroBits,
+        IN                  SIZE_T          CommitSize,
+        IN OUT              LARGE_INTEGER  SectionOffset OPTIONAL,
+        IN OUT              PSIZE_T         ViewSize,
+        IN                  SECTION_INHERIT InheritDisposition,
+        IN                  ULONG           AllocationType,
+        IN                  ULONG           Win32Protect);
+
     NTSYSAPI
         NTSTATUS
         NTAPI NtUnmapViewOfSection(IN HANDLE hProcess, IN PVOID pBaseAddress);
